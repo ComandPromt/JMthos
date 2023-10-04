@@ -1,11 +1,14 @@
 package mthos;
 
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
+import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.Transparency;
@@ -23,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.math.RoundingMode;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -33,14 +37,18 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.text.NumberFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioInputStream;
@@ -58,24 +66,461 @@ import io.github.biezhi.webp.WebpIO;
 
 public abstract class JMthos {
 
-	public static boolean convertImg(String rutaAbsoluta, String extension)
+	public static final String OS = System.getProperty("os.name");
 
-			throws IOException {
+	public static void renombrarPorExtension(String carpeta, String extensionEntrada, String extensionSalida,
+			boolean borrar) {
 
-		extension = extension.toLowerCase();
+		extensionEntrada = extensionEntrada.replace(".", "");
 
-		FileInputStream inputStream = new FileInputStream(rutaAbsoluta);
+		extensionSalida = extensionSalida.replace(".", "");
 
-		FileOutputStream outputStream = new FileOutputStream(
-				rutaAbsoluta.substring(0, rutaAbsoluta.lastIndexOf(".") + 1) + extension);
+		LinkedList<String> lista = (LinkedList<String>) listar(carpeta, extensionEntrada, false, true);
 
-		BufferedImage inputImage = ImageIO.read(inputStream);
+		boolean imagen = false;
 
-		boolean result = ImageIO.write(inputImage, extension, outputStream);
+		switch (extensionEntrada) {
 
-		outputStream.close();
+		case "jpg":
 
-		inputStream.close();
+		case "png":
+
+		case "bmp":
+
+		case "gif":
+
+		case "jpeg":
+
+		case "apng":
+
+		case "webp":
+
+		case "jfif":
+
+		case "avif":
+
+			imagen = true;
+
+			break;
+
+		default:
+			break;
+
+		}
+
+		File archivo;
+
+		for (String texto : lista) {
+
+			archivo = new File(texto);
+
+			try {
+
+				if (imagen) {
+
+					convertImg(texto, extensionSalida);
+
+					if (borrar) {
+
+						archivo.delete();
+
+					}
+
+				}
+
+				else {
+
+					archivo.renameTo(new File(texto.substring(0, texto.lastIndexOf(".") + 1) + extensionSalida));
+
+				}
+
+			}
+
+			catch (Exception e) {
+
+			}
+
+		}
+
+	}
+
+	public static void mostrarArchivosDeLinux(String path) {
+
+		LinkedList<String> lista = (LinkedList<String>) listar(path, "all", false, true);
+
+		String salida = "";
+
+		String salida2 = "";
+
+		for (String texto : lista) {
+
+			try {
+
+				if ((texto.substring(texto.lastIndexOf("/") + 1, texto.lastIndexOf("/") + 2).equals("."))) {
+
+					salida = texto.substring(0, texto.lastIndexOf("/") + 1);
+
+					salida2 = texto.substring(texto.lastIndexOf("/") + 2, texto.length());
+
+					new File(texto).renameTo(new File(salida + salida2));
+
+				}
+
+			}
+
+			catch (Exception e) {
+
+			}
+
+		}
+
+	}
+
+	public static void mostrarArchivosDeLinux(String path, String extension) {
+
+		LinkedList<String> lista = (LinkedList<String>) listar(path, extension, false, true);
+
+		String salida = "";
+
+		String salida2 = "";
+
+		for (String texto : lista) {
+
+			try {
+
+				if ((texto.substring(texto.lastIndexOf("/") + 1, texto.lastIndexOf("/") + 2).equals("."))) {
+
+					salida = texto.substring(0, texto.lastIndexOf("/") + 1);
+
+					salida2 = texto.substring(texto.lastIndexOf("/") + 2, texto.length());
+
+					new File(texto).renameTo(new File(salida + salida2));
+
+				}
+
+			}
+
+			catch (Exception e) {
+
+			}
+
+		}
+
+	}
+
+	public static String ponerSeparador(String texto) {
+
+		if (!texto.endsWith(saberSeparador())) {
+
+			texto += saberSeparador();
+
+		}
+
+		return texto;
+
+	}
+
+	public static String findLongestString(LinkedList<String> list) {
+
+		String longestString = null;
+
+		int maxLength = -1;
+
+		for (String str : list) {
+
+			if (str.length() > maxLength) {
+
+				maxLength = str.length();
+
+				longestString = str;
+
+			}
+
+		}
+
+		return longestString;
+
+	}
+
+	private JMthos() {
+
+	}
+
+	public static int calcularPorcentaje(int valor, int total) {
+
+		float resultado = (valor * 100) / total;
+
+		int salida;
+
+		NumberFormat numberFormat = NumberFormat.getInstance();
+
+		numberFormat.setMaximumFractionDigits(0);
+
+		numberFormat.setRoundingMode(RoundingMode.DOWN);
+
+		salida = Integer.parseInt(numberFormat.format(resultado));
+
+		return salida;
+
+	}
+
+	public static String aumentarDia(int valor) {
+
+		Calendar calendar = Calendar.getInstance();
+
+		calendar.setTime(new Date());
+
+		int calendarTime = Calendar.DAY_OF_MONTH;
+
+		int temp = calendar.get(calendarTime);
+
+		calendar.set(calendarTime, temp + valor);
+
+		Date newDate = calendar.getTime();
+
+		return newDate.toString();
+
+	}
+
+	public static String saberNombreArchivoConExtension(String archivo) {
+
+		String resultado = "";
+
+		try {
+
+			resultado = archivo.substring(archivo.lastIndexOf(saberSeparador()) + 1, archivo.length());
+
+		} catch (Exception e) {
+
+		}
+
+		return resultado;
+
+	}
+
+	public static BufferedImage iconToBufferedImage(Icon icon) {
+
+		int width = icon.getIconWidth();
+
+		int height = icon.getIconHeight();
+
+		BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+
+		Graphics graphics = bufferedImage.getGraphics();
+
+		Component c = new Component() {
+
+			private static final long serialVersionUID = 1L;
+
+		};
+
+		icon.paintIcon(c, graphics, 0, 0);
+
+		graphics.dispose();
+
+		return bufferedImage;
+
+	}
+
+	public static Point getSizeOfImage(BufferedImage originalImage, int newWidth, int newHeight, boolean resize) {
+
+		Point punto;
+
+		int originalWidth = originalImage.getWidth();
+
+		int originalHeight = originalImage.getHeight();
+
+		if (resize) {
+
+			double widthRatio = (double) newWidth / originalWidth;
+
+			double heightRatio = (double) newHeight / originalHeight;
+
+			double scaleFactor = Math.min(widthRatio, heightRatio);
+
+			punto = new Point((int) (originalWidth * scaleFactor), (int) (originalHeight * scaleFactor));
+
+		}
+
+		else {
+
+			punto = new Point(originalWidth, originalHeight);
+
+		}
+
+		return punto;
+
+	}
+
+	public static BufferedImage loadFileImage(String image) {
+
+		try {
+
+			return javax.imageio.ImageIO.read(new File(image));
+
+		}
+
+		catch (Exception e) {
+
+			return null;
+
+		}
+
+	}
+
+	public static void copy(String text) {
+
+		try {
+
+			Clipboard clipboard = getSystemClipboard();
+
+			clipboard.setContents(new StringSelection(text), null);
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+	}
+
+	public static BufferedImage resizeImage(BufferedImage originalImage, int newWidth, int newHeight) {
+
+		BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
+
+		Graphics2D graphics2D = resizedImage.createGraphics();
+
+		graphics2D.drawImage(originalImage, 0, 0, newWidth, newHeight, null);
+
+		graphics2D.dispose();
+
+		return resizedImage;
+
+	}
+
+	public static BufferedImage resizeImage(String path, int newWidth, int newHeight) {
+
+		BufferedImage originalImage;
+
+		try {
+
+			originalImage = ImageIO.read(new File(path));
+
+			int originalWidth = originalImage.getWidth();
+
+			int originalHeight = originalImage.getHeight();
+
+			double widthRatio = (double) newWidth / originalWidth;
+
+			double heightRatio = (double) newHeight / originalHeight;
+
+			double scaleFactor = Math.min(widthRatio, heightRatio);
+
+			return new BufferedImage((int) (originalWidth * scaleFactor), (int) (originalHeight * scaleFactor),
+					originalImage.getType());
+
+		}
+
+		catch (Exception e) {
+
+			return null;
+
+		}
+
+	}
+
+	public static boolean cumpleLaExpresionRegular(String texto, String patron) {
+
+		return Pattern.compile(patron, Pattern.CASE_INSENSITIVE).matcher(texto).find();
+
+	}
+
+	public static LocalDate hoy(String separador, boolean english, boolean zero) {
+
+		return LocalDate.parse(saberFechaActual(separador, english, zero), DateTimeFormatter.ISO_LOCAL_DATE);
+
+	}
+
+	public static String saberFechaActual(String separador, boolean english, boolean zero) {
+
+		Calendar c = Calendar.getInstance();
+
+		String mes = Integer.toString(c.get(Calendar.MONTH) + 1);
+
+		if (Integer.parseInt(mes) < 10 && zero) {
+
+			mes = "0" + mes;
+
+		}
+
+		String dia = Integer.toString(c.get(Calendar.DATE) + 1);
+
+		if (Integer.parseInt(dia) < 10 && zero) {
+
+			dia = "0" + dia;
+
+		}
+
+		if (english) {
+
+			return c.get(Calendar.YEAR) + separador + mes + separador + dia;
+
+		}
+
+		else {
+
+			return dia + separador + mes + separador + c.get(Calendar.YEAR);
+
+		}
+
+	}
+
+	public static boolean convertImg(String rutaAbsoluta, String extension) {
+
+		boolean result = false;
+
+		try {
+
+			extension = extension.toLowerCase();
+
+			FileInputStream inputStream = new FileInputStream(rutaAbsoluta);
+
+			FileOutputStream outputStream = new FileOutputStream(
+					rutaAbsoluta.substring(0, rutaAbsoluta.lastIndexOf(".") + 1) + extension);
+
+			BufferedImage inputImage = ImageIO.read(inputStream);
+
+			result = ImageIO.write(inputImage, extension, outputStream);
+
+			outputStream.close();
+
+			inputStream.close();
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+		return result;
+
+	}
+
+	public static float truncateFloat(float number, int numDigits) {
+
+		float result = number;
+
+		String arg = "" + number;
+
+		int idx = arg.indexOf('.');
+
+		if (idx != -1 && (arg.length() > idx + numDigits)) {
+
+			arg = arg.substring(0, idx + numDigits + 1);
+
+			result = Float.parseFloat(arg);
+
+		}
 
 		return result;
 
@@ -101,18 +546,12 @@ public abstract class JMthos {
 
 	}
 
-	static final String OS = System.getProperty("os.name");
-
-	private JMthos() {
-
-	}
-
 	public static void convertirImagen(String extensionEntrada, String extensionSalida, String folder)
 			throws IOException {
 
 		LinkedList<String> imagenesPng = new LinkedList<String>();
 
-		imagenesPng = (LinkedList<String>) listar(folder, extensionEntrada, false);
+		imagenesPng = (LinkedList<String>) listar(folder, extensionEntrada, false, true);
 
 		File beforeFile;
 
@@ -140,7 +579,7 @@ public abstract class JMthos {
 
 	}
 
-	private static byte[] createChecksum(String filename) throws NoSuchAlgorithmException, IOException {
+	static byte[] createChecksum(String filename) throws NoSuchAlgorithmException, IOException {
 
 		InputStream fis = null;
 
@@ -243,7 +682,7 @@ public abstract class JMthos {
 
 		if (fichero.exists()) {
 
-			if (!fichero.isDirectory()) {
+			if (fichero.isFile()) {
 
 				fichero.delete();
 
@@ -346,9 +785,7 @@ public abstract class JMthos {
 		BufferedImage afterImg = new BufferedImage(beforeImg.getWidth(), beforeImg.getHeight(),
 				BufferedImage.TYPE_INT_RGB);
 
-		java.awt.Color color = null;
-
-		afterImg.createGraphics().drawImage(beforeImg, 0, 0, color.white, null);
+		afterImg.createGraphics().drawImage(beforeImg, 0, 0, Color.WHITE, null);
 
 		ImageIO.write(afterImg, "jpg", afterFile);
 
@@ -356,11 +793,33 @@ public abstract class JMthos {
 
 	}
 
+	public static boolean esImagen(String file) {
+
+		boolean resultado = false;
+
+		try {
+
+			if (ImageIO.read(new File(file)) != null) {
+
+				resultado = true;
+
+			}
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+		return resultado;
+
+	}
+
 	public static void png2JpgInFolder(String folder) throws IOException {
 
 		LinkedList<String> imagenesPng = new LinkedList<String>();
 
-		imagenesPng = (LinkedList<String>) listar(folder, "png", false);
+		imagenesPng = (LinkedList<String>) listar(folder, "png", false, true);
 
 		File beforeFile;
 
@@ -377,9 +836,7 @@ public abstract class JMthos {
 			BufferedImage afterImg = new BufferedImage(beforeImg.getWidth(), beforeImg.getHeight(),
 					BufferedImage.TYPE_INT_RGB);
 
-			java.awt.Color color = null;
-
-			afterImg.createGraphics().drawImage(beforeImg, 0, 0, color.white, null);
+			afterImg.createGraphics().drawImage(beforeImg, 0, 0, Color.WHITE, null);
 
 			ImageIO.write(afterImg, "jpg", afterFile);
 
@@ -389,31 +846,23 @@ public abstract class JMthos {
 
 	}
 
-	public static List<String> listar(String ruta, String extension, boolean carpeta) {
+	public static List<String> listar(String ruta, String extension, boolean carpeta, boolean absolutePath) {
+
+		if (!ruta.endsWith(saberSeparador())) {
+
+			ruta += saberSeparador();
+
+		}
+
+		if (extension == null) {
+
+			extension = "all";
+
+		}
 
 		LinkedList<String> lista = new LinkedList<>();
 
 		File f = new File(ruta);
-
-		ArrayList<String> videosPermitidos = new ArrayList<>();
-
-		videosPermitidos.add("mp4");
-
-		videosPermitidos.add("mpg");
-
-		videosPermitidos.add("avi");
-
-		videosPermitidos.add("mkv");
-
-		ArrayList<String> imagenesPermitidas = new ArrayList<>();
-
-		imagenesPermitidas.add("jpg");
-
-		imagenesPermitidas.add("png");
-
-		imagenesPermitidas.add("jpeg");
-
-		imagenesPermitidas.add("gif");
 
 		if (f.exists()) {
 
@@ -429,13 +878,13 @@ public abstract class JMthos {
 
 				fichero = ficheros[x].getName();
 
-				folder = new File(fichero);
+				folder = new File(ruta + fichero);
 
 				extensionArchivo = extraerExtension(fichero);
 
 				if (carpeta && folder.isDirectory()) {
 
-					lista.add(fichero);
+					sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 				}
 
@@ -445,15 +894,15 @@ public abstract class JMthos {
 
 					case "all":
 
-						lista.add(ruta + fichero);
+						sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 						break;
 
 					case "videos":
 
-						if (videosPermitidos.contains(extensionArchivo)) {
+						if (esVideo(ruta + fichero)) {
 
-							lista.add(ruta + fichero);
+							sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 						}
 
@@ -461,9 +910,9 @@ public abstract class JMthos {
 
 					case "images":
 
-						if (imagenesPermitidas.contains(extensionArchivo)) {
+						if (esImagen(ruta + fichero)) {
 
-							lista.add(ruta + fichero);
+							sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 						}
 
@@ -473,7 +922,7 @@ public abstract class JMthos {
 
 						if (extension.equals(extensionArchivo)) {
 
-							lista.add(ruta + fichero);
+							sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 						}
 
@@ -493,7 +942,19 @@ public abstract class JMthos {
 
 	}
 
-	public static List<String> listarConArray(String ruta, String[] lista, boolean carpeta) {
+	static void sacarRutaAbsoluta(String ruta, boolean absolutePath, LinkedList<String> lista, String fichero) {
+
+		saberSiEsRutaAbsoluta(ruta, absolutePath, lista, fichero);
+
+	}
+
+	public static List<String> listarConArray(String ruta, String[] lista, boolean carpeta, boolean absolutePath) {
+
+		if (!ruta.endsWith(saberSeparador())) {
+
+			ruta += saberSeparador();
+
+		}
 
 		LinkedList<String> list = new LinkedList<>();
 
@@ -519,7 +980,7 @@ public abstract class JMthos {
 
 				if (carpeta && folder.isDirectory()) {
 
-					list.add(fichero);
+					saberSiEsRutaAbsoluta(ruta, absolutePath, list, fichero);
 
 				}
 
@@ -527,7 +988,7 @@ public abstract class JMthos {
 
 						Arrays.asList(lista).contains(extensionArchivo)) {
 
-					list.add(ruta + fichero);
+					saberSiEsRutaAbsoluta(ruta, absolutePath, list, fichero);
 
 				}
 
@@ -538,6 +999,22 @@ public abstract class JMthos {
 		Collections.sort(list);
 
 		return list;
+
+	}
+
+	static void saberSiEsRutaAbsoluta(String ruta, boolean absolutePath, LinkedList<String> list, String fichero) {
+
+		if (absolutePath) {
+
+			list.add(ruta + fichero);
+
+		}
+
+		else {
+
+			list.add(fichero);
+
+		}
 
 	}
 
@@ -591,7 +1068,7 @@ public abstract class JMthos {
 
 	}
 
-	public static boolean esImagen(String absolutePath) {
+	public static boolean tieneExtensionDeImagen(String absolutePath) {
 
 		boolean resultado = false;
 
@@ -620,6 +1097,7 @@ public abstract class JMthos {
 			break;
 
 		default:
+
 			break;
 
 		}
@@ -651,6 +1129,7 @@ public abstract class JMthos {
 			break;
 
 		default:
+
 			break;
 
 		}
@@ -820,8 +1299,6 @@ public abstract class JMthos {
 
 		catch (Exception e) {
 
-			e.printStackTrace();
-
 		}
 
 	}
@@ -834,27 +1311,17 @@ public abstract class JMthos {
 
 	}
 
-	public static void copiarAlPortapapeles(String text) {
-
-		try {
-
-			Clipboard clipboard = getSystemClipboard();
-
-			clipboard.setContents(new StringSelection(text), null);
-
-		}
-
-		catch (Exception e) {
-
-		}
-
-	}
-
 	public static String[] getFonts() {
 
 		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
 
 		return ge.getAvailableFontFamilyNames();
+
+	}
+
+	public static List<String> obtenerFuentes() {
+
+		return Arrays.asList(getFonts());
 
 	}
 
@@ -864,7 +1331,7 @@ public abstract class JMthos {
 
 	}
 
-	public static void abrirCarpeta(String ruta) throws IOException {
+	public static void abrirCarpeta(String ruta) {
 
 		if (ruta != null && !ruta.equals("") && !ruta.isEmpty()) {
 
@@ -927,7 +1394,11 @@ public abstract class JMthos {
 
 	public static double convertirASegundos(String duracionVideo) {
 
-		double horas, minutos, segundos;
+		double horas;
+
+		double minutos;
+
+		double segundos;
 
 		try {
 
@@ -964,6 +1435,22 @@ public abstract class JMthos {
 		}
 
 		return horas + minutos + segundos;
+
+	}
+
+	public static int contarOcurrencias(String text, String search) {
+
+		int contador = 0;
+
+		while (text.indexOf(search) > -1) {
+
+			text = text.substring(text.indexOf(search) + search.length(), text.length());
+
+			contador++;
+
+		}
+
+		return contador;
 
 	}
 
@@ -1200,6 +1687,7 @@ public abstract class JMthos {
 		out = new String(s.getBytes(StandardCharsets.UTF_8), StandardCharsets.ISO_8859_1);
 
 		return out;
+
 	}
 
 	public static String directorioActual() {
@@ -1329,7 +1817,7 @@ public abstract class JMthos {
 
 	public static void eliminarArchivos(String ruta, String extension) throws IOException {
 
-		LinkedList<String> frames = (LinkedList<String>) listar(ruta, extension, false);
+		LinkedList<String> frames = (LinkedList<String>) listar(ruta, extension, false, true);
 
 		for (int i = 0; i < frames.size(); i++) {
 
@@ -1356,7 +1844,7 @@ public abstract class JMthos {
 
 	}
 
-	private static String readAll(Reader rd) throws IOException {
+	static String readAll(Reader rd) throws IOException {
 
 		StringBuilder sb = new StringBuilder();
 
@@ -1476,7 +1964,7 @@ public abstract class JMthos {
 
 	}
 
-	public static void crearFichero(String ruta, String texto) throws IOException {
+	public static void crearCarpeta(String ruta, String texto) throws IOException {
 
 		File archivo = new File(ruta);
 
@@ -1512,7 +2000,7 @@ public abstract class JMthos {
 
 	public static void vaciarCarpeta(String ruta) throws IOException {
 
-		LinkedList<String> frames = (LinkedList<String>) listar(ruta, ".", false);
+		LinkedList<String> frames = (LinkedList<String>) listar(ruta, ".", false, true);
 
 		for (int i = 0; i < frames.size(); i++) {
 
@@ -1570,35 +2058,13 @@ public abstract class JMthos {
 
 		try {
 
-			File f1 = new File(archivo);
-
-			File f2 = new File(archivo.substring(0, archivo.lastIndexOf(".") + 1) + extension);
-
-			f1.renameTo(f2);
+			new File(archivo).renameTo(new File(archivo.substring(0, archivo.lastIndexOf(".") + 1) + extension));
 
 		}
 
 		catch (Exception e) {
 
 		}
-
-	}
-
-	public static int renombrar(String ruta1, String ruta2) {
-
-		File f1 = new File(ruta1);
-
-		File f2 = new File(ruta2);
-
-		short respuesta = 400;
-
-		if (f1.exists() && f2.exists() && f1.renameTo(f2)) {
-
-			respuesta = 200;
-
-		}
-
-		return respuesta;
 
 	}
 
