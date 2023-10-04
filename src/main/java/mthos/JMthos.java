@@ -220,7 +220,7 @@ public abstract class JMthos {
 
 	}
 
-	public static String findLongestString(LinkedList<String> list) {
+	public static String findLongestString(List<String> list) {
 
 		String longestString = null;
 
@@ -290,7 +290,9 @@ public abstract class JMthos {
 
 			resultado = archivo.substring(archivo.lastIndexOf(saberSeparador()) + 1, archivo.length());
 
-		} catch (Exception e) {
+		}
+
+		catch (Exception e) {
 
 		}
 
@@ -549,9 +551,7 @@ public abstract class JMthos {
 	public static void convertirImagen(String extensionEntrada, String extensionSalida, String folder)
 			throws IOException {
 
-		LinkedList<String> imagenesPng = new LinkedList<String>();
-
-		imagenesPng = (LinkedList<String>) listar(folder, extensionEntrada, false, true);
+		LinkedList<String> imagenesPng = (LinkedList<String>) listar(folder, extensionEntrada, false, true);
 
 		File beforeFile;
 
@@ -1456,6 +1456,12 @@ public abstract class JMthos {
 
 	public static String calcularTiempo(long segundos) {
 
+		String ceroHoras = "";
+
+		String ceroMinutos = "";
+
+		String ceroSegundos = "";
+
 		int minutos = 0;
 
 		int horas = 0;
@@ -1468,29 +1474,19 @@ public abstract class JMthos {
 
 		}
 
-		minutos = (int) (segundos / 60);
+		else {
 
-		int calculoSegundos = 0;
+			minutos = (int) (segundos / 60);
 
-		calculoSegundos = 60 * minutos;
+			int calculoSegundos = 0;
 
-		segundos -= calculoSegundos;
+			calculoSegundos = 60 * minutos;
 
-		if (minutos == 60) {
+			segundos -= calculoSegundos;
 
-			horas = 1;
+			if (minutos == 60) {
 
-			minutos = 0;
-
-			segundos = 0;
-
-		}
-
-		if (minutos > 60) {
-
-			if (minutos % 60 == 0) {
-
-				horas = minutos / 60;
+				horas = 1;
 
 				minutos = 0;
 
@@ -1498,66 +1494,74 @@ public abstract class JMthos {
 
 			}
 
-			else {
+			if (minutos > 60) {
 
-				int contador = 0;
+				if (minutos % 60 == 0) {
 
-				int horaProxima = 120;
+					horas = minutos / 60;
 
-				int siguienteHora = 0;
+					minutos = 0;
 
-				while (contador == 0) {
+					segundos = 0;
 
-					if (minutos < horaProxima) {
+				}
 
-						contador = horaProxima;
+				else {
 
-					}
+					int contador = 0;
 
-					else {
+					int horaProxima = 120;
 
-						siguienteHora = horaProxima + 60;
+					int siguienteHora = 0;
 
-						if (minutos > horaProxima && minutos < siguienteHora) {
+					while (contador == 0) {
 
-							contador = siguienteHora;
+						if (minutos < horaProxima) {
+
+							contador = horaProxima;
 
 						}
 
-						horaProxima = siguienteHora;
+						else {
 
+							siguienteHora = horaProxima + 60;
+
+							if (minutos > horaProxima && minutos < siguienteHora) {
+
+								contador = siguienteHora;
+
+							}
+
+							horaProxima = siguienteHora;
+
+						}
 					}
+
+					horas = minutos / 60;
+
+					minutos = 60 - (horaProxima - minutos);
+
 				}
-
-				horas = minutos / 60;
-
-				minutos = 60 - (horaProxima - minutos);
 
 			}
 
-		}
+			if (horas <= 9) {
 
-		String ceroHoras = "";
+				ceroHoras = "0";
 
-		String ceroMinutos = "";
+			}
 
-		String ceroSegundos = "";
+			if (minutos <= 9) {
 
-		if (horas <= 9) {
+				ceroMinutos = "0";
 
-			ceroHoras = "0";
+			}
 
-		}
+			if (segundos <= 9) {
 
-		if (minutos <= 9) {
+				ceroSegundos = "0";
 
-			ceroMinutos = "0";
-
-		}
-
-		if (segundos <= 9) {
-
-			ceroSegundos = "0";
+			}
 
 		}
 
