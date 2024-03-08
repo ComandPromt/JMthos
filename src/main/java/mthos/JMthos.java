@@ -68,6 +68,22 @@ public abstract class JMthos {
 
 	public static final String OS = System.getProperty("os.name");
 
+	public static BufferedImage loadImage(String imagePath) {
+
+		try {
+
+			return ImageIO.read(new File(imagePath));
+
+		}
+
+		catch (IOException e) {
+
+			return null;
+
+		}
+
+	}
+
 	public static void renombrarPorExtension(String carpeta, String extensionEntrada, String extensionSalida,
 			boolean borrar) {
 
@@ -383,6 +399,48 @@ public abstract class JMthos {
 		catch (Exception e) {
 
 		}
+
+	}
+
+	public static boolean tieneCaracterNoImprimible(int keyCode) {
+
+		return !(keyCode != 112 && keyCode != 113 && keyCode != 114 && keyCode != 115 && keyCode != 116
+
+				&& keyCode != 117 && keyCode != 19 && keyCode != 118 && keyCode != 119 && keyCode != 120
+
+				&& keyCode != 121 && keyCode != 122 && keyCode != 123 && keyCode != 27 && keyCode != 16 && keyCode != 17
+
+				&& keyCode != 18 && keyCode != 65406 && keyCode != 155 && keyCode != 127 && keyCode != 33
+
+				&& keyCode != 34 && keyCode != 20 && keyCode != 35 && keyCode != 36 && keyCode != 144 && keyCode != 37
+
+				&& keyCode != 38 && keyCode != 39 && keyCode != 40);
+
+	}
+
+	public static String calcularNumeroEspacios(int numeroEspacios) {
+
+		String resultado = "";
+
+		for (int i = 0; i < numeroEspacios; i++)
+
+			resultado = String.valueOf(resultado) + " ";
+
+		return resultado;
+
+	}
+
+	public static Image resizeImage(Image originalImage, int newWidth, int newHeight) {
+
+		BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
+
+		Graphics2D graphics2D = resizedImage.createGraphics();
+
+		graphics2D.drawImage(originalImage, 0, 0, newWidth, newHeight, null);
+
+		graphics2D.dispose();
+
+		return resizedImage;
 
 	}
 
@@ -1365,9 +1423,25 @@ public abstract class JMthos {
 
 	}
 
-	public static void crearCarpeta(String path) {
+	public static int crearCarpeta(String path) {
 
-		new File(path).mkdir();
+		int respuesta;
+
+		try {
+
+			respuesta = 200;
+
+			new File(path).mkdir();
+
+		}
+
+		catch (Exception e) {
+
+			respuesta = 300;
+
+		}
+
+		return respuesta;
 
 	}
 
@@ -1942,15 +2016,21 @@ public abstract class JMthos {
 
 	}
 
-	public static int crearFichero(String file) {
+	public static int crearFichero(String filePath, String texto) {
 
-		short respuesta = 400;
+		int respuesta = 400;
 
 		try {
 
-			File archivo = new File(file);
+			File archivo = new File(filePath);
 
-			if (archivo.exists() && archivo.createNewFile()) {
+			if (!archivo.exists() && archivo.createNewFile()) {
+
+				try (BufferedWriter bw = new BufferedWriter(new FileWriter(archivo))) {
+
+					bw.write(texto);
+
+				}
 
 				respuesta = 200;
 
@@ -1965,40 +2045,6 @@ public abstract class JMthos {
 		}
 
 		return respuesta;
-
-	}
-
-	public static void crearCarpeta(String ruta, String texto) throws IOException {
-
-		File archivo = new File(ruta);
-
-		try {
-
-			if (!archivo.exists()) {
-
-				archivo.mkdir();
-
-			}
-
-			BufferedWriter bw = new BufferedWriter(new FileWriter(archivo));
-
-			try {
-
-				bw.write(texto);
-
-			}
-
-			finally {
-
-				bw.close();
-
-			}
-
-		}
-
-		catch (Exception e) {
-
-		}
 
 	}
 
