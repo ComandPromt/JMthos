@@ -49,6 +49,7 @@ import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.imageio.ImageIO;
 import javax.sound.sampled.AudioInputStream;
@@ -67,6 +68,57 @@ import io.github.biezhi.webp.WebpIO;
 public abstract class JMthos {
 
 	public static final String OS = System.getProperty("os.name");
+
+	public static List<Integer> encontrarPosiciones(String texto, String cadena) {
+
+		List<Integer> posiciones = new ArrayList<>();
+
+		int indice = texto.indexOf(cadena);
+
+		while (indice >= 0) {
+
+			posiciones.add(indice);
+
+			indice = texto.indexOf(cadena, indice + 1);
+
+		}
+
+		return posiciones;
+
+	}
+
+	public static String reemplazarPosiciones(String texto, String textoAReemplazar, List<String> reemplazos) {
+
+		List<Integer> posiciones = encontrarPosiciones(texto, textoAReemplazar);
+
+		StringBuilder mensaje = new StringBuilder(texto);
+
+		int offset = 0;
+
+		for (int i = 0; i < posiciones.size(); i++) {
+
+			String reemplazo = reemplazos.get(i % reemplazos.size());
+
+			int posicionActual = posiciones.get(i) + offset;
+
+			mensaje.replace(posicionActual, posicionActual + textoAReemplazar.length(), reemplazo);
+
+			offset += reemplazo.length() - textoAReemplazar.length();
+
+		}
+
+		return mensaje.toString();
+
+	}
+
+	public static String ListaAString(List<String> lista, String separador) {
+
+		LinkedList<String> archivos = lista.stream().filter(path -> !Files.isDirectory(Paths.get(path)))
+				.collect(Collectors.toCollection(LinkedList::new));
+
+		return String.join(separador, archivos);
+
+	}
 
 	public static BufferedImage loadImage(String imagePath) {
 
@@ -942,7 +994,7 @@ public abstract class JMthos {
 
 				if (carpeta && folder.isDirectory()) {
 
-					sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
+					saberSiEsRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 				}
 
@@ -952,7 +1004,7 @@ public abstract class JMthos {
 
 					case "all":
 
-						sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
+						saberSiEsRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 						break;
 
@@ -960,7 +1012,7 @@ public abstract class JMthos {
 
 						if (esVideo(ruta + fichero)) {
 
-							sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
+							saberSiEsRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 						}
 
@@ -970,7 +1022,7 @@ public abstract class JMthos {
 
 						if (esImagen(ruta + fichero)) {
 
-							sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
+							saberSiEsRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 						}
 
@@ -980,7 +1032,7 @@ public abstract class JMthos {
 
 						if (extension.equals(extensionArchivo)) {
 
-							sacarRutaAbsoluta(ruta, absolutePath, lista, fichero);
+							saberSiEsRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 						}
 
@@ -997,12 +1049,6 @@ public abstract class JMthos {
 		Collections.sort(lista);
 
 		return lista;
-
-	}
-
-	static void sacarRutaAbsoluta(String ruta, boolean absolutePath, LinkedList<String> lista, String fichero) {
-
-		saberSiEsRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
 	}
 
@@ -1032,19 +1078,23 @@ public abstract class JMthos {
 
 				fichero = ficheros[x].getName();
 
-				folder = new File(fichero);
+				if (carpeta) {
 
-				extensionArchivo = extraerExtension(fichero);
-
-				if (carpeta && folder.isDirectory()) {
-
-					saberSiEsRutaAbsoluta(ruta, absolutePath, list, fichero);
+					folder = new File(fichero);
 
 				}
 
-				else if (!carpeta && folder.isFile() &&
+				else {
 
-						Arrays.asList(lista).contains(extensionArchivo)) {
+					folder = new File(ruta + fichero);
+
+				}
+
+				extensionArchivo = extraerExtension(fichero);
+
+				if ((!carpeta && folder.isFile() &&
+
+						Arrays.asList(lista).contains(extensionArchivo)) || (carpeta && folder.isDirectory())) {
 
 					saberSiEsRutaAbsoluta(ruta, absolutePath, list, fichero);
 
