@@ -69,6 +69,29 @@ public abstract class JMthos {
 
 	public static final String OS = System.getProperty("os.name");
 
+	public static int encontrarAparicion(String cadena, String subcadena, int indice) {
+
+		int aparicionesEncontradas = 0;
+
+		int posicion = -1;
+
+		while (aparicionesEncontradas < indice) {
+
+			posicion = cadena.indexOf(subcadena, posicion + 1);
+
+			if (posicion == -1) {
+
+				return -1;
+			}
+
+			aparicionesEncontradas++;
+
+		}
+
+		return posicion;
+
+	}
+
 	public static List<Integer> encontrarPosiciones(String texto, String cadena) {
 
 		List<Integer> posiciones = new ArrayList<>();
