@@ -14,6 +14,8 @@ import java.awt.Toolkit;
 import java.awt.Transparency;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.KeyEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -26,6 +28,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -37,6 +40,12 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.text.NumberFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -48,6 +57,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -57,17 +67,1026 @@ import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.Clip;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.UnsupportedAudioFileException;
+import javax.swing.DefaultListCellRenderer;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
+import javax.swing.JComboBox;
+import javax.swing.JFrame;
+import javax.swing.JTextPane;
+import javax.swing.text.DefaultStyledDocument;
+import javax.swing.text.Style;
+import javax.swing.text.StyleConstants;
+import javax.swing.text.StyleContext;
+import javax.swing.text.StyledDocument;
 
 import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 
 import io.github.biezhi.webp.WebpIO;
+import mthos.gif.AnimatedGifEncoder;
+import mthos.gif.GifDecoder;
 
 public abstract class JMthos {
 
 	public static final String OS = System.getProperty("os.name");
+
+	public static void crearGif(String path, String output, String extension) {
+
+		crearGif(path, output, extension, 25f, 1);
+
+	}
+
+	public static void crearGif(String path, String output, String extension, float frameRate, int open) {
+
+		try {
+
+			path = pasarDeArchivoACarpeta(path);
+
+			LinkedList<String> lista = (LinkedList<String>) listar(path, extension, false, true);
+
+			if (!lista.isEmpty()) {
+
+				AnimatedGifEncoder e = new AnimatedGifEncoder();
+
+				e.start(output);
+
+				for (int i = 0; i < lista.size(); i++) {
+
+					e.addFrame(fileToBufferedImage(new File(lista.get(i))));
+
+				}
+
+				e.setFrameRate(frameRate);
+
+				e.finish();
+
+				metodoAbrir(output, open);
+
+			}
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+	}
+
+	public static String pasarDeArchivoACarpeta(String path) {
+
+		String resultado = path;
+
+		if (terminaEnArchivo(resultado)) {
+
+			resultado = obtenerDirectorio(resultado);
+
+		}
+
+		else {
+
+			resultado = ponerSeparador(resultado);
+
+		}
+
+		return resultado;
+	}
+
+	public static boolean terminaEnArchivo(String path) {
+
+		Pattern pattern = Pattern.compile("\\.([a-z]{3,4})$");
+
+		Matcher matcher = pattern.matcher(path);
+
+		return matcher.find();
+
+	}
+
+	public static void optimizeGifWithGifsicle(String input, String output, int level)
+			throws IOException, InterruptedException {
+
+		optimizeGifWithGifsicle(input, output, "", level, 0);
+
+	}
+
+	public static void optimizeGifWithGifsicle(String input, String output, String gifsiclePath, int level)
+			throws IOException, InterruptedException {
+
+		optimizeGifWithGifsicle(input, output, gifsiclePath, level, 0);
+
+	}
+
+	public static void optimizeGifWithGifsicle(String input, String output, String gifsiclePath)
+			throws IOException, InterruptedException {
+
+		optimizeGifWithGifsicle(input, output, gifsiclePath, 3, 0);
+
+	}
+
+	double truncateDouble(double number, int numDigits) {
+
+		double result = number;
+
+		String arg = "" + number;
+
+		int idx = arg.indexOf('.');
+
+		if (idx != -1) {
+
+			if (arg.length() > idx + numDigits) {
+
+				arg = arg.substring(0, idx + numDigits + 1);
+
+				result = Double.parseDouble(arg);
+
+			}
+		}
+
+		return result;
+
+	}
+
+	public static void optimizeGifWithGifsicle(String input, String output, String gifsiclePath, int level, int open)
+			throws IOException, InterruptedException {
+
+		if (level < 1 || level > 3) {
+
+			level = 3;
+
+		}
+
+		List<String> command = new ArrayList<>();
+
+		if (gifsiclePath == null || gifsiclePath.isEmpty()) {
+
+			command.add("gifsicle");
+
+		}
+
+		else {
+
+			command.add(gifsiclePath);
+
+		}
+
+		command.add("--optimize=" + level);
+
+		command.add("--colors");
+
+		command.add("256");
+
+		command.add("--output");
+
+		command.add(output);
+
+		command.add(input);
+
+		ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+		processBuilder.redirectErrorStream(true);
+
+		try {
+
+			Process process = processBuilder.start();
+
+			if (process.waitFor() != 0) {
+
+				throw new RuntimeException(
+						"La optimización de Gifsicle falló con el código de salida: " + process.waitFor());
+
+			}
+
+			else {
+
+				metodoAbrir(output, open);
+
+			}
+
+		}
+
+		catch (IOException | InterruptedException e) {
+
+			throw new RuntimeException("Error al optimizar el GIF", e);
+
+		}
+
+	}
+
+	private static void metodoAbrir(String output, int open) {
+
+		switch (open) {
+
+		case 0:
+
+			break;
+
+		case 1:
+
+			abrir(output);
+
+			break;
+
+		default:
+
+			abrir(obtenerDirectorio(output));
+
+			break;
+
+		}
+
+	}
+
+	public static String obtenerDirectorio(String output) {
+
+		try {
+
+			return output.substring(0, output.lastIndexOf(saberSeparador()) + 1);
+
+		}
+
+		catch (Exception e) {
+
+			return "";
+
+		}
+
+	}
+
+	/**
+	 * Exporta un BufferedImage a un archivo.
+	 *
+	 * @param image    la imagen a exportar.
+	 * @param format   el formato de la imagen (por ejemplo, "png", "jpg").
+	 * @param filePath la ruta del archivo donde se guardará la imagen.
+	 * @throws IOException si ocurre un error al escribir el archivo.
+	 */
+
+	public static void exportBufferedImage(BufferedImage image, String format, String filePath) throws IOException {
+
+		boolean formatSupported = false;
+
+		String[] supportedFormats = ImageIO.getWriterFormatNames();
+
+		for (String supportedFormat : supportedFormats) {
+
+			if (supportedFormat.equalsIgnoreCase(format)) {
+
+				formatSupported = true;
+
+				break;
+
+			}
+
+		}
+
+		if (!formatSupported) {
+
+			throw new IOException("Formato no soportado: " + format);
+
+		}
+
+		File outputFile = new File(filePath);
+
+		if (!ImageIO.write(image, format, outputFile)) {
+
+			throw new IOException("Error al escribir la imagen en el archivo. Formato no soportado: " + format);
+
+		}
+
+	}
+
+	public static void exportarFramesGif(String filePath, String outputFolder) {
+
+		exportarFramesGif(filePath, outputFolder, "", "png", true);
+
+	}
+
+	public static void exportarFramesGif(String filePath, String outputFolder, String extension) {
+
+		exportarFramesGif(filePath, outputFolder, "", extension, true);
+
+	}
+
+	public static void exportarFramesGif(String filePath, String outputFolder, String name, String extension) {
+
+		exportarFramesGif(filePath, outputFolder, name, extension, true);
+
+	}
+
+	public static void optimizarGif(String input, String output) {
+
+		AnimatedGifEncoder e = new AnimatedGifEncoder();
+
+		e.start(output);
+
+		e.setFrameRate(25);
+
+		GifDecoder d = new GifDecoder();
+
+		d.read(input);
+
+		for (int i = 0; i < d.getFrameCount(); i++) {
+
+			e.addFrame(d.getFrame(i));
+
+		}
+
+		e.finish();
+
+	}
+
+	public static void exportarFramesGif(String filePath, String outputFolder, String name, String extension,
+			boolean openOutput) {
+
+		outputFolder = pasarDeArchivoACarpeta(outputFolder);
+
+		extension = extension.toLowerCase();
+
+		boolean jpg = extension.equals("jpg");
+
+		if (name == null || name.equals("")) {
+
+			name = "_frame_";
+
+		}
+
+		if (jpg || extension == null || extension.equals("")) {
+
+			extension = "png";
+
+		}
+
+		if (outputFolder == null || outputFolder.equals("")) {
+
+			outputFolder = filePath.substring(0, filePath.lastIndexOf(saberSeparador()) + 1);
+
+		}
+
+		else if (!new File(outputFolder).exists()) {
+
+			crearCarpeta(outputFolder);
+
+		}
+
+		if (esGifAnimado(filePath)) {
+
+			GifDecoder d = new GifDecoder();
+
+			d.read(filePath);
+
+			BufferedImage frame;
+
+			int contador = 1;
+
+			for (int i = 0; i < d.getFrameCount(); i++) {
+
+				frame = d.getFrame(i);
+
+				try {
+
+					exportBufferedImage(frame, extension,
+							ponerSeparador(outputFolder) + name + contador + "." + extension);
+
+					if (jpg) {
+
+						convertPNGtoJPG(ponerSeparador(outputFolder) + name + contador + "." + extension,
+								ponerSeparador(outputFolder) + name + contador + "." + "jpg");
+
+						eliminarArchivo(ponerSeparador(outputFolder) + name + contador + "." + extension);
+
+					}
+
+				}
+
+				catch (Exception e) {
+
+				}
+
+				contador++;
+
+			}
+
+			if (openOutput) {
+
+				abrir(outputFolder);
+
+			}
+
+		}
+
+	}
+
+	public static boolean esGifAnimado(String filePath) {
+
+		GifDecoder d = new GifDecoder();
+
+		d.read(filePath);
+
+		return d.getLoopCount() > -1;
+
+	}
+
+	/**
+	 * Trunca un número decimal al número especificado de dígitos decimales.
+	 * 
+	 * @param number  el número decimal a truncar.
+	 * @param digitos el número de dígitos decimales a mantener.
+	 * @return el número truncado con el número especificado de dígitos decimales.
+	 */
+
+	public static double truncateDecimal(double number, int digitos) {
+
+		double raiz = 10;
+
+		double multiplicador = Math.pow(raiz, digitos);
+
+		double resultado = ((int) (number * multiplicador)) / multiplicador;
+
+		return Double.parseDouble(String.format("%." + digitos + "f", resultado).replace(",", "."));
+
+	}
+
+	/**
+	 * Trunca un número decimal al número especificado de dígitos decimales.
+	 * 
+	 * @param number  el número decimal a truncar.
+	 * @param digitos el número de dígitos decimales a mantener.
+	 * @return el número truncado con el número especificado de dígitos decimales.
+	 */
+
+	public static float truncateFloat(float number, int digitos) {
+
+		double raiz = 10;
+
+		double multiplicador = Math.pow(raiz, digitos);
+
+		double resultado = ((int) (number * multiplicador)) / multiplicador;
+
+		return Float.parseFloat(String.format("%." + digitos + "f", resultado).replace(",", "."));
+
+	}
+
+	public static BufferedImage fileToBufferedImage(File file) throws IOException {
+
+		return ImageIO.read(file);
+
+	}
+
+	public static String limpiarEspacios(String cadena, boolean eliminarEspacios) {
+
+		if (cadena == null || cadena.isEmpty()) {
+
+			return cadena;
+
+		}
+
+		cadena = cadena.trim();
+
+		StringBuilder resultado = new StringBuilder();
+
+		boolean espacioPrevio = false;
+
+		for (char c : cadena.toCharArray()) {
+
+			if (Character.isWhitespace(c)) {
+
+				if (!eliminarEspacios && !espacioPrevio) {
+
+					resultado.append(c);
+
+					espacioPrevio = true;
+
+				}
+
+			}
+
+			else {
+
+				resultado.append(c);
+
+				espacioPrevio = false;
+
+			}
+
+		}
+
+		return resultado.toString();
+
+	}
+
+	/**
+	 * Convierte la primera letra de una cadena a mayúscula.
+	 * 
+	 * @param cadena la cadena de entrada.
+	 * @return la cadena con la primera letra en mayúscula.
+	 */
+	public static String primeraLetraMayuscula(String cadena) {
+
+		if (cadena == null || cadena.isEmpty()) {
+
+			return cadena;
+
+		}
+
+		return Character.toUpperCase(cadena.charAt(0)) + cadena.substring(1);
+
+	}
+
+	public static String readFile(String filePath) throws IOException {
+
+		StringBuilder content = new StringBuilder();
+
+		try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+
+			String line;
+
+			while ((line = br.readLine()) != null) {
+
+				content.append(line).append("\n");
+
+			}
+
+		}
+
+		return content.toString();
+
+	}
+
+	public static void writeFile(String filePath, String content) throws IOException {
+
+		try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
+
+			bw.write(content);
+
+		}
+
+	}
+
+	public static double dividir(int a, int b) {
+
+		if (b == 0) {
+
+			throw new ArithmeticException("Division by zero is not allowed");
+
+		}
+
+		return (double) a / b;
+
+	}
+
+	public static int valorMaximo(int a, int b) {
+
+		return (a > b) ? a : b;
+
+	}
+
+	public static int valorMinimo(int a, int b) {
+
+		return (a < b) ? a : b;
+
+	}
+
+	/**
+	 * Calcula el valor de la sucesión geométrica para un índice dado a partir de un
+	 * parámetro de texto.
+	 * 
+	 * @param parametro Una cadena de texto que contiene pares de índice y valor en
+	 *                  el formato "1#2,2#4,3#8,4#16". El formato debe ser
+	 *                  exactamente como se describe, con pares separados por comas
+	 *                  y los índices y valores separados por el símbolo '#'.
+	 * @param n         El índice para el cual se desea calcular el valor de la
+	 *                  sucesión geométrica. Debe ser un entero positivo.
+	 * @return El valor de la sucesión geométrica en el índice dado. Si hay un error
+	 *         en el formato del parámetro o en el valor de n, se retorna null.
+	 */
+
+	public static Integer crearSucesionGeometrica(String parametro, int n) {
+
+		Integer resultado = null;
+
+		if (parametro == null || parametro.isEmpty()) {
+
+			System.err.println("El parámetro no puede ser nulo o vacío.");
+
+		}
+
+		else if (n <= 0) {
+
+			System.err.println("El índice n debe ser un entero positivo.");
+
+		}
+
+		else {
+
+			String[] pares = parametro.split(",");
+
+			int[] indices = new int[pares.length];
+
+			int[] valores = new int[pares.length];
+
+			boolean formatoIncorrecto = false;
+
+			for (int i = 0; i < pares.length && !formatoIncorrecto; i++) {
+
+				String[] partes = pares[i].split("#");
+
+				if (partes.length != 2) {
+
+					System.err.println("El formato del parámetro es incorrecto en: " + pares[i]);
+
+					formatoIncorrecto = true;
+
+				}
+
+				else {
+
+					try {
+
+						indices[i] = Integer.parseInt(partes[0]);
+
+						valores[i] = Integer.parseInt(partes[1]);
+
+					}
+
+					catch (NumberFormatException e) {
+
+						System.err.println("El formato de número es incorrecto en: " + pares[i]);
+
+						formatoIncorrecto = true;
+
+					}
+
+				}
+
+			}
+
+			if (!formatoIncorrecto && indices.length >= 2) {
+
+				double razon = (double) valores[1] / valores[0];
+
+				resultado = (int) (valores[0] * Math.pow(razon, n - 1));
+
+			}
+
+			else if (indices.length < 2) {
+
+				System.err.println("Se requieren al menos dos pares de valores para calcular la fórmula.");
+
+			}
+
+		}
+
+		return resultado;
+
+	}
+
+	/**
+	 * Calcula el valor de la sucesión aritmética para un índice dado a partir de un
+	 * parámetro de texto.
+	 * 
+	 * @param parametro Una cadena de texto que contiene pares de índice y valor en
+	 *                  el formato "1#2,2#4,3#8,4#16". El formato debe ser
+	 *                  exactamente como se describe, con pares separados por comas
+	 *                  y los índices y valores separados por el símbolo '#'.
+	 * @param n         El índice para el cual se desea calcular el valor de la
+	 *                  sucesión geométrica. Debe ser un entero positivo.
+	 * @return El valor de la sucesión geométrica en el índice dado. Si hay un error
+	 *         en el formato del parámetro o en el valor de n, se retorna null.
+	 */
+
+	public static Integer calcularSucesionAritmetica(String parametro, int n) {
+
+		Integer resultado = null;
+
+		if (parametro == null || parametro.isEmpty()) {
+
+			System.err.println("El parámetro no puede ser nulo o vacío.");
+
+		}
+
+		else if (n <= 0) {
+
+			System.err.println("El índice n debe ser un entero positivo.");
+
+		}
+
+		else {
+
+			String[] pares = parametro.split(",");
+
+			int[] indices = new int[pares.length];
+
+			int[] valores = new int[pares.length];
+
+			boolean formatoIncorrecto = false;
+
+			for (int i = 0; i < pares.length && !formatoIncorrecto; i++) {
+
+				String[] partes = pares[i].split("#");
+
+				if (partes.length != 2) {
+
+					System.err.println("El formato del parámetro es incorrecto en: " + pares[i]);
+
+					formatoIncorrecto = true;
+
+				}
+
+				else {
+
+					try {
+
+						indices[i] = Integer.parseInt(partes[0]);
+
+						valores[i] = Integer.parseInt(partes[1]);
+
+					}
+
+					catch (NumberFormatException e) {
+
+						System.err.println("El formato de número es incorrecto en: " + pares[i]);
+
+						formatoIncorrecto = true;
+
+					}
+
+				}
+
+			}
+
+			if (!formatoIncorrecto && indices.length >= 2) {
+
+				int constante = (valores[1] - valores[0]) / (indices[1] - indices[0]);
+
+				resultado = constante * (n - 1);
+
+			}
+
+			else if (indices.length < 2) {
+
+				System.err.println("Se requieren al menos dos pares de valores para calcular la fórmula.");
+
+			}
+
+		}
+
+		return resultado;
+
+	}
+
+	public String enteroACadena(int numero) {
+
+		return String.valueOf(numero);
+
+	}
+
+	public String floatACadena(float numero) {
+
+		return String.valueOf(numero);
+
+	}
+
+	public String doubleACadena(double numero) {
+
+		return String.valueOf(numero);
+
+	}
+
+	public static char asciiToChar(int codigoAscii) {
+
+		return (char) codigoAscii;
+
+	}
+
+	public static int charToAscii(char caracter) {
+
+		return (int) caracter;
+
+	}
+
+	public int cadenaAEntero(String cadena) {
+
+		return Integer.parseInt(cadena);
+
+	}
+
+	public static boolean esPar(int numero) {
+
+		return numero % 2 == 0;
+
+	}
+
+	public static double redondearDouble(double numero, int decimales) {
+
+		if (decimales < 0) {
+
+			throw new IllegalArgumentException("El número de decimales no puede ser negativo.");
+
+		}
+
+		BigDecimal bigDecimal = new BigDecimal(Double.toString(numero));
+
+		bigDecimal = bigDecimal.setScale(decimales, RoundingMode.HALF_UP);
+
+		return bigDecimal.doubleValue();
+
+	}
+
+	public static void convertJPGtoPNG(String jpgFilePath, String pngFilePath) throws IOException {
+
+		BufferedImage bufferedImage = ImageIO.read(new File(jpgFilePath));
+
+		BufferedImage newBufferedImage = new BufferedImage(bufferedImage.getWidth(), bufferedImage.getHeight(),
+				BufferedImage.TYPE_INT_ARGB);
+
+		newBufferedImage.createGraphics().drawImage(bufferedImage, 0, 0, java.awt.Color.WHITE, null);
+
+		ImageIO.write(newBufferedImage, "png", new File(pngFilePath));
+	}
+
+	public static void convertPNGtoJPG(String pngFilePath, String jpgFilePath) throws IOException {
+
+		BufferedImage bufferedImage = ImageIO.read(new File(pngFilePath));
+
+		BufferedImage newBufferedImage = new BufferedImage(bufferedImage.getWidth(), bufferedImage.getHeight(),
+				BufferedImage.TYPE_INT_RGB);
+
+		newBufferedImage.createGraphics().drawImage(bufferedImage, 0, 0, java.awt.Color.WHITE, null);
+
+		ImageIO.write(newBufferedImage, "jpg", new File(jpgFilePath));
+
+	}
+
+	public static JTextPane centrarJTextPane(JTextPane textPane) {
+
+		try {
+
+			textPane.setDocument(centrarJTextPane());
+
+		} catch (Exception e) {
+
+		}
+
+		return textPane;
+
+	}
+
+	public static StyledDocument centrarJTextPane() {
+
+		StyleContext context = new StyleContext();
+
+		Style style = context.getStyle(StyleContext.DEFAULT_STYLE);
+
+		StyleConstants.setAlignment(style, StyleConstants.ALIGN_CENTER);
+
+		return new DefaultStyledDocument(context);
+
+	}
+
+	public static void centrarJFrame(JFrame frame) {
+
+		try {
+
+			frame.setLocationRelativeTo(null);
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+	}
+
+	public static void redondearComboBx(JComboBox<?> comboBox) {
+
+		try {
+
+			DefaultListCellRenderer listRenderer = new DefaultListCellRenderer();
+
+			listRenderer.setHorizontalAlignment(DefaultListCellRenderer.CENTER);
+
+			comboBox.setRenderer(listRenderer);
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+	}
+
+	public static float redondearFloat(float numero, int decimales) {
+
+		if (decimales < 0) {
+
+			throw new IllegalArgumentException("El número de decimales no puede ser negativo.");
+
+		}
+
+		BigDecimal bigDecimal = new BigDecimal(Float.toString(numero));
+
+		bigDecimal = bigDecimal.setScale(decimales, RoundingMode.HALF_UP);
+
+		return bigDecimal.floatValue();
+
+	}
+
+	public static int dividirYRedondear(int numerador, int denominador) {
+
+		if (denominador == 0) {
+
+			throw new ArithmeticException("El denominador no puede ser cero.");
+
+		}
+
+		int resultado = numerador / denominador;
+
+		if (numerador % denominador > 0) {
+
+			resultado += 1;
+
+		}
+
+		return resultado;
+
+	}
+
+	public static boolean isEnter(KeyEvent e) {
+
+		return (e.getKeyCode() == KeyEvent.VK_ENTER) ? true : false;
+
+	}
+
+	public static boolean scrollHaciaAbajo(MouseWheelEvent e) {
+
+		return (e.getWheelRotation() == 1) ? true : false;
+
+	}
+
+	public static ArrayList<String> selectSQlite(String dbName, String query, List<String> columns) {
+
+		String url = "jdbc:sqlite:" + dbName;
+
+		ArrayList<String> resultados = new ArrayList<>();
+
+		try {
+
+			Class.forName("org.sqlite.JDBC");
+
+			Connection connection = DriverManager.getConnection(url);
+
+			Statement statement = connection.createStatement();
+
+			ResultSet resultSet = statement.executeQuery(query);
+
+			while (resultSet.next()) {
+
+				for (int i = 0; i < columns.size(); i++) {
+
+					resultados.add(resultSet.getString(columns.get(i)));
+
+				}
+
+			}
+
+			resultSet.close();
+
+			statement.close();
+
+			connection.close();
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+		return resultados;
+
+	}
+
+	public static void insertSQLite(String db, String table, List<String> columns, List<String> values) {
+
+		try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db);
+
+				PreparedStatement pstmt = conn
+						.prepareStatement("INSERT INTO " + table + " (" + String.join(",", columns) + ") VALUES ("
+								+ values.stream().map(v -> "?").collect(Collectors.joining(",")) + ")")) {
+
+			for (int i = 0; i < values.size(); i++) {
+
+				pstmt.setString(i + 1, values.get(i));
+
+			}
+
+			pstmt.executeUpdate();
+
+		}
+
+		catch (SQLException e) {
+
+		}
+
+	}
 
 	public static int encontrarAparicion(String cadena, String subcadena, int indice) {
 
@@ -267,7 +1286,7 @@ public abstract class JMthos {
 
 	}
 
-	public static void mostrarArchivosDeLinux(String path, String extension) {
+	public static void mostrarArchivosOcultosDeLinux(String path, String extension) {
 
 		LinkedList<String> lista = (LinkedList<String>) listar(path, extension, false, true);
 
@@ -505,6 +1524,40 @@ public abstract class JMthos {
 
 	}
 
+	public static <T> LinkedList<T> convertirArrayListALinkedList(ArrayList<T> arrayList) {
+
+		LinkedList<T> linkedList = new LinkedList<>(arrayList);
+
+		return linkedList;
+
+	}
+
+	public static <T> ArrayList<T> convertirLinkedListAArrayList(LinkedList<T> linkedList) {
+
+		ArrayList<T> arrayList = new ArrayList<>(linkedList);
+
+		return arrayList;
+
+	}
+
+	public static double calcularSeno(double angulo) {
+
+		return Math.sin(Math.toRadians(angulo));
+
+	}
+
+	public static double calcularCoseno(double angulo) {
+
+		return Math.cos(Math.toRadians(angulo));
+
+	}
+
+	public static double calcularTangente(double angulo) {
+
+		return Math.tan(Math.toRadians(angulo));
+
+	}
+
 	public static Image resizeImage(Image originalImage, int newWidth, int newHeight) {
 
 		BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
@@ -634,46 +1687,6 @@ public abstract class JMthos {
 		}
 
 		catch (Exception e) {
-
-		}
-
-		return result;
-
-	}
-
-	public static float truncateFloat(float number, int numDigits) {
-
-		float result = number;
-
-		String arg = "" + number;
-
-		int idx = arg.indexOf('.');
-
-		if (idx != -1 && (arg.length() > idx + numDigits)) {
-
-			arg = arg.substring(0, idx + numDigits + 1);
-
-			result = Float.parseFloat(arg);
-
-		}
-
-		return result;
-
-	}
-
-	public static double truncateDouble(double number, int numDigits) {
-
-		double result = number;
-
-		String arg = "" + number;
-
-		int idx = arg.indexOf('.');
-
-		if (idx != -1 && (arg.length() > idx + numDigits)) {
-
-			arg = arg.substring(0, idx + numDigits + 1);
-
-			result = Double.parseDouble(arg);
 
 		}
 
@@ -883,7 +1896,7 @@ public abstract class JMthos {
 
 				folder = new File(fichero);
 
-				extensionArchivo = extraerExtension(fichero);
+				extensionArchivo = saberExtension(fichero);
 
 				if (carpeta && folder.isDirectory()) {
 
@@ -1013,7 +2026,7 @@ public abstract class JMthos {
 
 				folder = new File(ruta + fichero);
 
-				extensionArchivo = extraerExtension(fichero);
+				extensionArchivo = saberExtension(fichero);
 
 				if (carpeta && folder.isDirectory()) {
 
@@ -1113,7 +2126,7 @@ public abstract class JMthos {
 
 				}
 
-				extensionArchivo = extraerExtension(fichero);
+				extensionArchivo = saberExtension(fichero);
 
 				if ((!carpeta && folder.isFile() &&
 
@@ -1203,7 +2216,7 @@ public abstract class JMthos {
 
 		boolean resultado = false;
 
-		switch (extraerExtension(absolutePath)) {
+		switch (saberExtension(absolutePath)) {
 
 		case "jpg":
 
@@ -1241,7 +2254,7 @@ public abstract class JMthos {
 
 		boolean resultado = false;
 
-		switch (extraerExtension(absolutePath)) {
+		switch (saberExtension(absolutePath)) {
 
 		case "mp4":
 
@@ -1335,7 +2348,7 @@ public abstract class JMthos {
 
 	}
 
-	public static int listarFicherosPorCarpeta(String carpeta, String filtro) {
+	public static int contarFicherosPorCarpeta(String carpeta, String filtro) {
 
 		File exCarpeta = new File(carpeta);
 
@@ -1353,7 +2366,7 @@ public abstract class JMthos {
 
 				nombreArchivo = ficheroEntrada.getName();
 
-				extension = extraerExtension(nombreArchivo);
+				extension = saberExtension(nombreArchivo);
 
 				folder = new File(exCarpeta + saberSeparador() + nombreArchivo);
 
@@ -1371,7 +2384,7 @@ public abstract class JMthos {
 
 	}
 
-	public static int listarFicherosPorCarpeta(final File carpeta, String filtro) {
+	public static int contarFicherosPorCarpeta(final File carpeta, String filtro) {
 
 		int ocurrencias = 0;
 
@@ -1387,7 +2400,7 @@ public abstract class JMthos {
 
 				nombreArchivo = ficheroEntrada.getName();
 
-				extension = extraerExtension(nombreArchivo);
+				extension = saberExtension(nombreArchivo);
 
 				folder = new File(carpeta + saberSeparador() + nombreArchivo);
 
@@ -1402,6 +2415,40 @@ public abstract class JMthos {
 		}
 
 		return ocurrencias;
+
+	}
+
+	public static void ejecutarProgramaDeWsl(String programa, boolean cmd) {
+
+		ejecutarComando("wsl -e " + programa, cmd);
+
+	}
+
+	public static void ejecutarComando(String string, boolean cmd) {
+
+		try {
+
+			String cabecera = "";
+
+			if (OS.contains("indow")) {
+
+				cabecera = "cmd /c ";
+
+				if (cmd) {
+
+					cabecera = "cmd /c start cmd.exe /K \"";
+
+				}
+
+			}
+
+			Runtime.getRuntime().exec(cabecera + string);
+
+		}
+
+		catch (Exception e) {
+
+		}
 
 	}
 
@@ -1424,7 +2471,7 @@ public abstract class JMthos {
 			}
 
 			Runtime.getRuntime().exec(cabecera + "cd " + string.substring(0, string.lastIndexOf(saberSeparador()))
-					+ " && java -jar \"" + string + "\"");
+					+ " && java -jar \"" + string.substring(string.lastIndexOf(saberSeparador()) + 1) + "\"");
 
 		}
 
@@ -1462,7 +2509,7 @@ public abstract class JMthos {
 
 	}
 
-	public static void abrirCarpeta(String ruta) {
+	public static void abrir(String ruta) {
 
 		if (ruta != null && !ruta.equals("") && !ruta.isEmpty()) {
 
@@ -1524,7 +2571,7 @@ public abstract class JMthos {
 
 	}
 
-	public static String extraerExtension(String nombreArchivo) {
+	public static String saberExtension(String nombreArchivo) {
 
 		String extension = "";
 
@@ -1803,7 +2850,7 @@ public abstract class JMthos {
 
 			cadena2 = cadena.substring(0, cadena.lastIndexOf("."));
 
-			cadena = cadena2.replace(".", "_") + "." + extraerExtension(cadena);
+			cadena = cadena2.replace(".", "_") + "." + saberExtension(cadena);
 
 		}
 
