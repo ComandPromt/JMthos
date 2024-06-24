@@ -7,60 +7,56 @@ public class TextoLong {
 
 	private int flag;
 
-	public int numero;
+	private int numero;
 
-	public String importe_parcial;
+	private String num;
 
-	public String num;
+	private String num_letra;
 
-	public String num_letra;
+	private String num_letras;
 
-	public String num_letras;
+	private String num_letram;
 
-	public String num_letram;
+	private String num_letradm;
 
-	public String num_letradm;
+	private String num_letracm;
 
-	public String num_letracm;
+	private String num_letramm;
 
-	public String num_letramm;
+	private String num_letradmm;
 
-	public String num_letradmm;
-
+	/**
+	 * Convierte un número entero en su representación en palabras en español.
+	 *
+	 * @param num Número entero que se desea convertir.
+	 * @return Representación en palabras del número dado.
+	 */
 	public static String numeroALetras(int num) {
-
 		int numNegativo = num;
-
 		if (num < 0) {
-
 			num *= -1;
-
 		}
-
 		String resultado = new TextoLong(num).convertirLetras(num);
-
 		if (numNegativo < 0) {
-
 			resultado = "menos " + resultado;
-
 		}
-
 		resultado = resultado.replace("null", "");
-
 		resultado = resultado.replace("  ", " ");
-
 		resultado = resultado.replace("veintiunodos", "veintidos");
-
 		resultado = resultado.replace("veintiuno", "veintiun");
-
 		return resultado;
-
 	}
 
+	/**
+	 * Convierte un número escrito en palabras en español a su equivalente numérico.
+	 *
+	 * @param numeroTexto Número escrito en palabras que se desea convertir.
+	 * @return Valor numérico del número representado por las palabras.
+	 * @throws NumberFormatException Si el texto no puede ser convertido a un número
+	 *                               válido.
+	 */
 	public static long textoALong(String numeroTexto) throws NumberFormatException {
-
 		Map<String, Long> numeros = new HashMap<>();
-
 		numeros.put("cero", 0L);
 		numeros.put("uno", 1L);
 		numeros.put("dos", 2L);
@@ -121,106 +117,65 @@ public class TextoLong {
 
 		boolean esNegativo = false;
 
+		String palabra = "";
+
+		Long valor;
+
 		for (int i = 0; i < palabras.length; i++) {
 
-			String palabra = palabras[i];
+			palabra = palabras[i];
 
 			if (palabra.equals("menos")) {
-
 				esNegativo = true;
-
 				continue;
-
 			}
 
 			if (palabra.equals("y")) {
-
 				continue;
-
 			}
 
 			palabra = palabra.replaceAll("[áéíóú]", "aeiou");
 
-			Long valor = numeros.get(palabra);
+			valor = numeros.get(palabra);
 
 			if (valor == null) {
-
 				if (palabra.startsWith("veinti")) {
-
 					long valorCompuesto = numeros.get("veinte");
-
 					if (palabra.length() > 6) {
-
 						String unidadStr = palabra.substring(6);
-
 						Long unidadValor = numeros.get(unidadStr);
-
 						if (unidadValor != null) {
-
 							valorCompuesto += unidadValor;
-
-						}
-
-						else {
-
+						} else {
 							throw new NumberFormatException("Palabra no reconocida: " + palabra);
-
 						}
-
 					}
-
 					valor = valorCompuesto;
-
-				}
-
-				else {
-
+				} else {
 					throw new NumberFormatException("Palabra no reconocida: " + palabra);
-
 				}
-
 			}
 
 			if (valor == 100) {
-
 				parcial *= 100;
-
-			}
-
-			else if (valor == 1000) {
-
+			} else if (valor == 1000) {
 				resultado += parcial * 1000;
-
 				parcial = 0;
-
-			}
-
-			else if (valor == 1000000) {
-
+			} else if (valor == 1000000) {
 				resultado += parcial * 1000000;
-
 				parcial = 0;
-
-			}
-
-			else {
-
+			} else {
 				parcial += valor;
-
 			}
-
 		}
 
 		resultado += parcial;
 
 		if (esNegativo) {
-
 			resultado *= -1;
-
 		}
 
 		return resultado;
-
 	}
 
 	public TextoLong(int n) {
@@ -723,7 +678,7 @@ public class TextoLong {
 
 	}
 
-	public String convertirLetras(int numero) {
+	private String convertirLetras(int numero) {
 
 		num_letras = decmillon(numero);
 

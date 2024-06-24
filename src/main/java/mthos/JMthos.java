@@ -55,8 +55,11 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -72,6 +75,7 @@ import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
+import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.Style;
@@ -83,54 +87,487 @@ import org.apache.commons.io.FileUtils;
 import org.json.JSONObject;
 
 import io.github.biezhi.webp.WebpIO;
-import mthos.gif.AnimatedGifEncoder;
-import mthos.gif.GifDecoder;
 
 public abstract class JMthos {
 
+	private static final String URL_REGEX = "^(https?|ftp)://[a-zA-Z0-9\\-\\.]+(:[a-zA-Z0-9]*)?/?([a-zA-Z0-9\\-\\._\\?,'/\\+&%\\$#=~])*$";
+
+	private static final Pattern URL_PATTERN = Pattern.compile(URL_REGEX);
+
 	public static final String OS = System.getProperty("os.name");
 
-	public static void crearGif(String path, String output, String extension) {
+	/**
+	 * Método que realiza una regla de tres compuesta para resolver una proporción
+	 * entre tres términos.
+	 *
+	 * @param valor1           Primer valor conocido.
+	 * @param valor2           Segundo valor conocido.
+	 * @param valor3           Tercer valor conocido.
+	 * @param valorDesconocido Valor desconocido que se desea encontrar.
+	 * @return El valor desconocido calculado mediante la regla de tres compuesta.
+	 * @throws IllegalArgumentException Si alguno de los valores conocidos es cero.
+	 */
 
-		crearGif(path, output, extension, 25f, 1);
+	public static double reglaDeTresCompuesta(double valor1, double valor2, double valor3, double valorDesconocido) {
+
+		if (valor1 == 0 || valor2 == 0 || valor3 == 0) {
+
+			throw new IllegalArgumentException("Los valores conocidos no pueden ser cero.");
+
+		}
+
+		return (valor3 * valor2 * valorDesconocido) / (valor1 * valor2);
 
 	}
 
-	public static void crearGif(String path, String output, String extension, float frameRate, int open) {
+	/**
+	 * Método que realiza una regla de tres simple para resolver una proporción.
+	 *
+	 * @param valor1           Primer valor conocido.
+	 * @param valor2           Segundo valor conocido.
+	 * @param valorDesconocido Valor desconocido que se desea encontrar.
+	 * @return El valor desconocido calculado mediante la regla de tres.
+	 */
 
-		try {
+	public static double reglaDeTres(double valor1, double valor2, double valorDesconocido) {
 
-			path = pasarDeArchivoACarpeta(path);
+		return (valor2 * valorDesconocido) / valor1;
 
-			LinkedList<String> lista = (LinkedList<String>) listar(path, extension, false, true);
+	}
 
-			if (!lista.isEmpty()) {
+	/**
+	 * Convierte una lista de cadenas en un mapa donde las claves son índices
+	 * incrementales y los valores son cadenas agrupadas según el tamaño de división
+	 * especificado.
+	 *
+	 * @param lista Lista de cadenas para convertir en mapa.
+	 * @param split Tamaño de división para agrupar cadenas en cada valor del mapa.
+	 * @return Mapa donde las claves son índices y los valores son cadenas
+	 *         agrupadas.
+	 */
 
-				AnimatedGifEncoder e = new AnimatedGifEncoder();
+	public static Map<Integer, String> convertListToMap(List<String> lista, int split) {
 
-				e.start(output);
+		HashMap<Integer, String> hashMap = new HashMap<>();
 
-				for (int i = 0; i < lista.size(); i++) {
+		StringBuilder dato = new StringBuilder();
 
-					e.addFrame(fileToBufferedImage(new File(lista.get(i))));
+		int index = 0;
+
+		for (int i = 0; i < lista.size(); i += split) {
+
+			dato.setLength(0);
+
+			for (int j = 0; j < split && (i + j) < lista.size(); j++) {
+
+				if (j > 0) {
+
+					dato.append(" ");
 
 				}
 
-				e.setFrameRate(frameRate);
+				dato.append(lista.get(i + j));
 
-				e.finish();
+			}
 
-				metodoAbrir(output, open);
+			hashMap.put(index++, dato.toString());
+
+		}
+
+		return hashMap;
+
+	}
+
+	/**
+	 * Ordena un mapa por los valores obtenidos al dividir las cadenas en cada
+	 * entrada del mapa. El orden se determina según el índice especificado.
+	 *
+	 * @param map         Mapa a ordenar.
+	 * @param sortByIndex Índice (0 o 1) para determinar por cuál valor ordenar cada
+	 *                    entrada del mapa. Si es 0, ordena por el primer valor de
+	 *                    cada entrada. Si es 1, ordena por el segundo valor de cada
+	 *                    entrada.
+	 * @return Mapa ordenado por los valores según el índice especificado.
+	 */
+
+	public static Map<Integer, String> ordenarMap(Map<Integer, String> map, int sortByIndex) {
+
+		List<Map.Entry<Integer, String>> entryList = new ArrayList<>(map.entrySet());
+
+		Collections.sort(entryList, (e1, e2) -> {
+
+			String[] values1 = e1.getValue().split(" ");
+
+			String[] values2 = e2.getValue().split(" ");
+
+			int indexToSortBy = (sortByIndex == 2) ? 1 : 0; // Determinar el índice para ordenar
+
+			return values1[indexToSortBy].compareTo(values2[indexToSortBy]);
+
+		});
+
+		Map<Integer, String> sortedMap = new LinkedHashMap<>();
+
+		entryList.forEach(entry -> sortedMap.put(entry.getKey(), entry.getValue()));
+
+		Map<Integer, String> finalSortedMap = new LinkedHashMap<>();
+
+		int newIndex = 0;
+
+		for (Map.Entry<Integer, String> entry : sortedMap.entrySet()) {
+
+			finalSortedMap.put(newIndex++, entry.getValue());
+
+		}
+
+		return finalSortedMap;
+
+	}
+
+	/**
+	 * Recarga el panel especificado invalidando su caché y pidiendo una nueva
+	 * renderización.
+	 *
+	 * @param panel El panel que se desea recargar.
+	 */
+
+	public static void recargarPanel(JPanel panel) {
+
+		try {
+
+			panel.revalidate();
+
+			panel.repaint();
+
+		} catch (Exception e) {
+
+		}
+
+	}
+
+	/**
+	 * Verifica si una cadena tiene el formato de una URL utilizando los protocolos
+	 * HTTP, HTTPS o FTP.
+	 *
+	 * @param url La cadena a validar.
+	 * @return true si la cadena es una URL válida con los protocolos HTTP, HTTPS o
+	 *         FTP; false en caso contrario.
+	 */
+
+	public static boolean isValidURL(String url) {
+
+		if (url == null) {
+
+			return false;
+
+		}
+
+		Matcher matcher = URL_PATTERN.matcher(url);
+
+		return matcher.matches();
+
+	}
+
+	/**
+	 * Elimina las etiquetas HTML de un texto según el nombre de etiqueta, clases
+	 * y/o id especificados. Si tagName es nulo, retorna una cadena vacía. Si
+	 * classNamesList es null o vacío, elimina todas las etiquetas que coincidan con
+	 * tagName y id. Si exactMatch es true, elimina las etiquetas que contienen
+	 * todas las clases de classNamesList. Si exactMatch es false, elimina las
+	 * etiquetas que contienen al menos una clase de classNamesList.
+	 *
+	 * @param html           Texto HTML del cual se eliminarán las etiquetas.
+	 * @param tagName        Nombre de la etiqueta HTML (no puede ser nulo).
+	 * @param classNamesList Lista de nombres de clases CSS (puede ser null o
+	 *                       vacío).
+	 * @param id             Id del elemento (puede ser null o vacío).
+	 * @param exactMatch     Indica si se debe hacer coincidencia exacta de clases
+	 *                       (true) o no (false).
+	 * @return Texto sin las etiquetas especificadas.
+	 */
+
+	public static String removeHtmlTags(String html, String tagName, List<String> classNamesList, String id,
+
+			boolean exactMatch) {
+
+		if (tagName == null) {
+
+			return "";
+
+		}
+
+		String result = "";
+
+		String regex;
+
+		if ((classNamesList == null || classNamesList.isEmpty()) && (id == null || id.isEmpty())) {
+
+			regex = "<" + tagName + "\\b[^>]*>";
+
+		}
+
+		else if (classNamesList != null && !classNamesList.isEmpty()) {
+
+			StringBuilder classesRegex = new StringBuilder();
+
+			if (exactMatch) {
+
+				for (String className : classNamesList) {
+
+					classesRegex.append("(?=.*\\bclass\\s*=\\s*\"").append(className).append("\"\\b)");
+
+				}
+
+			}
+
+			else {
+
+				for (String className : classNamesList) {
+
+					classesRegex.append("\\bclass\\s*=\\s*\"").append(className).append("\"\\b|");
+
+				}
+
+				classesRegex.deleteCharAt(classesRegex.length() - 1); // Remove last '|'
+
+			}
+
+			regex = "<" + tagName + "\\b[^>]*" + classesRegex.toString() + "[^>]*>";
+
+		}
+
+		else {
+
+			regex = "<" + tagName + "\\b[^>]*\\bid\\s*=\\s*\"" + id + "\"[^>]*>";
+
+		}
+
+		Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
+
+		Matcher matcher = pattern.matcher(html);
+
+		result = matcher.replaceAll("");
+
+		return result;
+
+	}
+
+	/**
+	 * Elimina una etiqueta HTML y su contenido, excepto la etiqueta especificada
+	 * con su clase o id.
+	 *
+	 * @param html            El código HTML original.
+	 * @param tagToRemove     La etiqueta que se debe eliminar junto con su
+	 *                        contenido.
+	 * @param tagToKeep       La etiqueta que no se debe eliminar.
+	 * @param classNameToKeep La clase de la etiqueta que no se debe eliminar (puede
+	 *                        ser null o vacía).
+	 * @param idToKeep        El id de la etiqueta que no se debe eliminar (puede
+	 *                        ser null o vacío).
+	 * @return El código HTML con la etiqueta especificada eliminada excepto la
+	 *         etiqueta a conservar.
+	 */
+
+	public static String removeHtmlTagsExcept(String html, String tagToRemove, String tagToKeep, String classNameToKeep,
+			String idToKeep) {
+
+		if (tagToRemove == null || tagToRemove.isEmpty() || tagToKeep == null || tagToKeep.isEmpty()) {
+
+			return html;
+
+		}
+
+		String keepTagPattern = "<" + tagToKeep + "\\b[^>]*";
+
+		if (classNameToKeep != null && !classNameToKeep.isEmpty()) {
+
+			keepTagPattern += "\\bclass\\s*=\\s*\"[^\"]*\\b" + Pattern.quote(classNameToKeep) + "\\b[^\"]*\"";
+
+		}
+
+		if (idToKeep != null && !idToKeep.isEmpty()) {
+
+			keepTagPattern += "\\bid\\s*=\\s*\"" + Pattern.quote(idToKeep) + "\"";
+
+		}
+
+		keepTagPattern += "[^>]*>.*?<\\/" + tagToKeep + ">";
+
+		Pattern keepPattern = Pattern.compile(keepTagPattern, Pattern.DOTALL);
+
+		Matcher keepMatcher = keepPattern.matcher(html);
+
+		StringBuilder preservedTags = new StringBuilder();
+
+		while (keepMatcher.find()) {
+
+			preservedTags.append(keepMatcher.group());
+
+		}
+
+		return preservedTags.toString();
+
+	}
+
+	/**
+	 * Lee el contenido de un archivo HTML y lo retorna como una cadena.
+	 *
+	 * @param htmlFilePath Ruta del archivo HTML.
+	 * @return Contenido del archivo HTML como cadena.
+	 * @throws IOException Si ocurre un error al leer el archivo.
+	 */
+
+	public static String readHtmlFile(String htmlFilePath) throws IOException {
+
+		StringBuilder contentBuilder = new StringBuilder();
+
+		try (BufferedReader reader = new BufferedReader(new FileReader(htmlFilePath, StandardCharsets.UTF_8))) {
+
+			String line;
+
+			while ((line = reader.readLine()) != null) {
+
+				contentBuilder.append(line).append("\n");
 
 			}
 
 		}
 
-		catch (Exception e) {
+		return contentBuilder.toString();
+
+	}
+
+	/**
+	 * Limpia las etiquetas HTML de una cadena de texto.
+	 *
+	 * @param htmlText Texto que puede contener etiquetas HTML.
+	 * @return Texto limpio sin etiquetas HTML.
+	 */
+
+	public static String cleanHtmlTags(String htmlText) {
+
+		return htmlText.replaceAll("<.*?>", "").trim();
+
+	}
+
+	/**
+	 * Genera una estructura de tabla HTML a partir de celdas HTML concatenadas.
+	 * Cada celda se representa como una fila en la tabla.
+	 *
+	 * @param html El código HTML que contiene celdas consecutivas sin estructura de
+	 *             tabla.
+	 * @return Una cadena que representa la tabla HTML con las celdas organizadas en
+	 *         filas y columnas.
+	 */
+
+	public static String generateHtmlTable(String html) {
+
+		String[] cells = html.split("</td><td");
+
+		StringBuilder tableBuilder = new StringBuilder("<table>\n");
+
+		for (String cell : cells) {
+
+			String formattedCell = "<td" + cell + "</td>";
+
+			tableBuilder.append("    <tr>").append(formattedCell).append("</tr>\n");
 
 		}
 
+		tableBuilder.append("</table>");
+
+		return tableBuilder.toString().replace("<td<td", "<td");
+
 	}
+
+	/**
+	 * Elimina las etiquetas HTML de un texto según el nombre de etiqueta, clase y/o
+	 * id especificados. Retorna una cadena vacía si tagName es nulo o si ambos
+	 * className e id son nulos. Si className es nulo, elimina las etiquetas con el
+	 * id especificado. Si id es nulo, elimina las etiquetas con la clase
+	 * especificada.
+	 *
+	 * @param html      Texto HTML del cual se eliminarán las etiquetas.
+	 * @param tagName   Nombre de la etiqueta HTML.
+	 * @param className Nombre de la clase CSS (puede ser null).
+	 * @param id        Id del elemento (puede ser null).
+	 * @return Texto sin las etiquetas especificadas.
+	 */
+
+	public static String removeHtmlTags(String html, String tagName, String className, String id) {
+
+		if (tagName == null) {
+
+			return "";
+
+		}
+
+		String result = "";
+
+		String regex;
+
+		if ((className == null || className.isEmpty()) && (id == null || id.isEmpty())) {
+
+			regex = "<" + tagName + "\\b[^>]*>.*?</" + tagName + ">";
+
+		}
+
+		else if (className != null && !className.isEmpty()) {
+
+			regex = "<" + tagName + "\\b[^>]*\\bclass\\s*=\\s*\"[^\"]*\\b" + className + "\\b[^\"]*\"[^>]*>.*?</"
+					+ tagName + ">";
+
+		}
+
+		else {
+
+			regex = "<" + tagName + "\\b[^>]*\\bid\\s*=\\s*\"" + id + "\"[^>]*>.*?</" + tagName + ">";
+
+		}
+
+		Pattern pattern = Pattern.compile(regex, Pattern.DOTALL);
+
+		Matcher matcher = pattern.matcher(html);
+
+		result = matcher.replaceAll("");
+
+		return result;
+
+	}
+
+	/**
+	 * Redondea un número hacia arriba al entero más cercano.
+	 *
+	 * @param numero El número a redondear.
+	 * @return El entero más cercano redondeado hacia arriba.
+	 */
+
+	public static int redondearHaciaArriba(float numero) {
+
+		return (int) Math.ceil(numero);
+
+	}
+
+	/**
+	 * Redondea un número hacia abajo al entero más cercano.
+	 *
+	 * @param numero El número a redondear.
+	 * @return El entero más cercano redondeado hacia abajo.
+	 */
+
+	public static int redondearHaciaAbajo(float numero) {
+
+		return (int) Math.floor(numero);
+
+	}
+
+	/**
+	 * Convierte una ruta de archivo en una ruta de directorio si termina en un
+	 * archivo.
+	 *
+	 * @param path La ruta a convertir.
+	 * @return La ruta del directorio.
+	 */
 
 	public static String pasarDeArchivoACarpeta(String path) {
 
@@ -149,7 +586,16 @@ public abstract class JMthos {
 		}
 
 		return resultado;
+
 	}
+
+	/**
+	 * Verifica si una ruta termina en un archivo basándose en la extensión.
+	 *
+	 * @param path La ruta a verificar.
+	 * @return {@code true} si la ruta termina en un archivo, {@code false} en caso
+	 *         contrario.
+	 */
 
 	public static boolean terminaEnArchivo(String path) {
 
@@ -161,26 +607,14 @@ public abstract class JMthos {
 
 	}
 
-	public static void optimizeGifWithGifsicle(String input, String output, int level)
-			throws IOException, InterruptedException {
-
-		optimizeGifWithGifsicle(input, output, "", level, 0);
-
-	}
-
-	public static void optimizeGifWithGifsicle(String input, String output, String gifsiclePath, int level)
-			throws IOException, InterruptedException {
-
-		optimizeGifWithGifsicle(input, output, gifsiclePath, level, 0);
-
-	}
-
-	public static void optimizeGifWithGifsicle(String input, String output, String gifsiclePath)
-			throws IOException, InterruptedException {
-
-		optimizeGifWithGifsicle(input, output, gifsiclePath, 3, 0);
-
-	}
+	/**
+	 * Trunca un número de punto flotante a un número específico de dígitos
+	 * decimales.
+	 *
+	 * @param number    El número a truncar.
+	 * @param numDigits El número de dígitos decimales a mantener.
+	 * @return El número truncado.
+	 */
 
 	double truncateDouble(double number, int numDigits) {
 
@@ -205,73 +639,15 @@ public abstract class JMthos {
 
 	}
 
-	public static void optimizeGifWithGifsicle(String input, String output, String gifsiclePath, int level, int open)
-			throws IOException, InterruptedException {
+	/**
+	 * Abre un archivo o directorio según el valor del parámetro open.
+	 *
+	 * @param output La ruta del archivo o directorio a abrir.
+	 * @param open   El indicador de apertura (0: no abrir, 1: abrir archivo, otro:
+	 *               abrir directorio).
+	 */
 
-		if (level < 1 || level > 3) {
-
-			level = 3;
-
-		}
-
-		List<String> command = new ArrayList<>();
-
-		if (gifsiclePath == null || gifsiclePath.isEmpty()) {
-
-			command.add("gifsicle");
-
-		}
-
-		else {
-
-			command.add(gifsiclePath);
-
-		}
-
-		command.add("--optimize=" + level);
-
-		command.add("--colors");
-
-		command.add("256");
-
-		command.add("--output");
-
-		command.add(output);
-
-		command.add(input);
-
-		ProcessBuilder processBuilder = new ProcessBuilder(command);
-
-		processBuilder.redirectErrorStream(true);
-
-		try {
-
-			Process process = processBuilder.start();
-
-			if (process.waitFor() != 0) {
-
-				throw new RuntimeException(
-						"La optimización de Gifsicle falló con el código de salida: " + process.waitFor());
-
-			}
-
-			else {
-
-				metodoAbrir(output, open);
-
-			}
-
-		}
-
-		catch (IOException | InterruptedException e) {
-
-			throw new RuntimeException("Error al optimizar el GIF", e);
-
-		}
-
-	}
-
-	private static void metodoAbrir(String output, int open) {
+	public static void abrir(String output, int open) {
 
 		switch (open) {
 
@@ -294,6 +670,13 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Obtiene el directorio de una ruta de archivo.
+	 *
+	 * @param output La ruta del archivo.
+	 * @return La ruta del directorio.
+	 */
 
 	public static String obtenerDirectorio(String output) {
 
@@ -354,137 +737,6 @@ public abstract class JMthos {
 
 	}
 
-	public static void exportarFramesGif(String filePath, String outputFolder) {
-
-		exportarFramesGif(filePath, outputFolder, "", "png", true);
-
-	}
-
-	public static void exportarFramesGif(String filePath, String outputFolder, String extension) {
-
-		exportarFramesGif(filePath, outputFolder, "", extension, true);
-
-	}
-
-	public static void exportarFramesGif(String filePath, String outputFolder, String name, String extension) {
-
-		exportarFramesGif(filePath, outputFolder, name, extension, true);
-
-	}
-
-	public static void optimizarGif(String input, String output) {
-
-		AnimatedGifEncoder e = new AnimatedGifEncoder();
-
-		e.start(output);
-
-		e.setFrameRate(25);
-
-		GifDecoder d = new GifDecoder();
-
-		d.read(input);
-
-		for (int i = 0; i < d.getFrameCount(); i++) {
-
-			e.addFrame(d.getFrame(i));
-
-		}
-
-		e.finish();
-
-	}
-
-	public static void exportarFramesGif(String filePath, String outputFolder, String name, String extension,
-			boolean openOutput) {
-
-		outputFolder = pasarDeArchivoACarpeta(outputFolder);
-
-		extension = extension.toLowerCase();
-
-		boolean jpg = extension.equals("jpg");
-
-		if (name == null || name.equals("")) {
-
-			name = "_frame_";
-
-		}
-
-		if (jpg || extension == null || extension.equals("")) {
-
-			extension = "png";
-
-		}
-
-		if (outputFolder == null || outputFolder.equals("")) {
-
-			outputFolder = filePath.substring(0, filePath.lastIndexOf(saberSeparador()) + 1);
-
-		}
-
-		else if (!new File(outputFolder).exists()) {
-
-			crearCarpeta(outputFolder);
-
-		}
-
-		if (esGifAnimado(filePath)) {
-
-			GifDecoder d = new GifDecoder();
-
-			d.read(filePath);
-
-			BufferedImage frame;
-
-			int contador = 1;
-
-			for (int i = 0; i < d.getFrameCount(); i++) {
-
-				frame = d.getFrame(i);
-
-				try {
-
-					exportBufferedImage(frame, extension,
-							ponerSeparador(outputFolder) + name + contador + "." + extension);
-
-					if (jpg) {
-
-						convertPNGtoJPG(ponerSeparador(outputFolder) + name + contador + "." + extension,
-								ponerSeparador(outputFolder) + name + contador + "." + "jpg");
-
-						eliminarArchivo(ponerSeparador(outputFolder) + name + contador + "." + extension);
-
-					}
-
-				}
-
-				catch (Exception e) {
-
-				}
-
-				contador++;
-
-			}
-
-			if (openOutput) {
-
-				abrir(outputFolder);
-
-			}
-
-		}
-
-	}
-
-	public static boolean esGifAnimado(String filePath) {
-
-		GifDecoder d = new GifDecoder();
-
-		d.read(filePath);
-
-		return d.getLoopCount() > -1;
-
-	}
-
 	/**
 	 * Trunca un número decimal al número especificado de dígitos decimales.
 	 * 
@@ -525,11 +777,29 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte un archivo de imagen en un objeto BufferedImage.
+	 *
+	 * @param file El archivo de imagen.
+	 * @return El objeto BufferedImage.
+	 * @throws IOException Si ocurre un error durante la lectura del archivo.
+	 */
+
 	public static BufferedImage fileToBufferedImage(File file) throws IOException {
 
 		return ImageIO.read(file);
 
 	}
+
+	/**
+	 * Limpia los espacios en una cadena. Puede eliminar todos los espacios o solo
+	 * los espacios duplicados.
+	 *
+	 * @param cadena           La cadena a limpiar.
+	 * @param eliminarEspacios Si es {@code true}, elimina todos los espacios. Si es
+	 *                         {@code false}, elimina solo los espacios duplicados.
+	 * @return La cadena limpiada.
+	 */
 
 	public static String limpiarEspacios(String cadena, boolean eliminarEspacios) {
 
@@ -579,6 +849,7 @@ public abstract class JMthos {
 	 * @param cadena la cadena de entrada.
 	 * @return la cadena con la primera letra en mayúscula.
 	 */
+
 	public static String primeraLetraMayuscula(String cadena) {
 
 		if (cadena == null || cadena.isEmpty()) {
@@ -590,6 +861,14 @@ public abstract class JMthos {
 		return Character.toUpperCase(cadena.charAt(0)) + cadena.substring(1);
 
 	}
+
+	/**
+	 * Lee el contenido de un archivo y lo devuelve como una cadena.
+	 *
+	 * @param filePath La ruta del archivo.
+	 * @return El contenido del archivo.
+	 * @throws IOException Si ocurre un error durante la lectura del archivo.
+	 */
 
 	public static String readFile(String filePath) throws IOException {
 
@@ -611,6 +890,14 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Escribe contenido en un archivo.
+	 *
+	 * @param filePath La ruta del archivo.
+	 * @param content  El contenido a escribir.
+	 * @throws IOException Si ocurre un error durante la escritura en el archivo.
+	 */
+
 	public static void writeFile(String filePath, String content) throws IOException {
 
 		try (BufferedWriter bw = new BufferedWriter(new FileWriter(filePath))) {
@@ -620,6 +907,15 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Divide dos números enteros.
+	 *
+	 * @param a El dividendo.
+	 * @param b El divisor.
+	 * @return El resultado de la división.
+	 * @throws ArithmeticException Si el divisor es cero.
+	 */
 
 	public static double dividir(int a, int b) {
 
@@ -633,15 +929,31 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Devuelve el valor máximo entre dos enteros.
+	 *
+	 * @param a El primer entero.
+	 * @param b El segundo entero.
+	 * @return El valor máximo.
+	 */
+
 	public static int valorMaximo(int a, int b) {
 
-		return (a > b) ? a : b;
+		return Math.max(a, b);
 
 	}
 
+	/**
+	 * Devuelve el valor mínimo entre dos enteros.
+	 *
+	 * @param a El primer entero.
+	 * @param b El segundo entero.
+	 * @return El valor mínimo.
+	 */
+
 	public static int valorMinimo(int a, int b) {
 
-		return (a < b) ? a : b;
+		return Math.min(a, b);
 
 	}
 
@@ -833,11 +1145,25 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte un entero a una cadena de caracteres.
+	 *
+	 * @param numero El entero a convertir.
+	 * @return La representación en cadena del entero.
+	 */
+
 	public String enteroACadena(int numero) {
 
 		return String.valueOf(numero);
 
 	}
+
+	/**
+	 * Convierte un número de punto flotante a una cadena de caracteres.
+	 *
+	 * @param numero El número de punto flotante a convertir.
+	 * @return La representación en cadena del número de punto flotante.
+	 */
 
 	public String floatACadena(float numero) {
 
@@ -845,11 +1171,25 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte un número de doble precisión a una cadena de caracteres.
+	 *
+	 * @param numero El número de doble precisión a convertir.
+	 * @return La representación en cadena del número de doble precisión.
+	 */
+
 	public String doubleACadena(double numero) {
 
 		return String.valueOf(numero);
 
 	}
+
+	/**
+	 * Convierte un código ASCII a su caracter correspondiente.
+	 *
+	 * @param codigoAscii El código ASCII a convertir.
+	 * @return El caracter correspondiente al código ASCII.
+	 */
 
 	public static char asciiToChar(int codigoAscii) {
 
@@ -857,11 +1197,26 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte un caracter a su código ASCII correspondiente.
+	 *
+	 * @param caracter El caracter a convertir.
+	 * @return El código ASCII del caracter.
+	 */
+
 	public static int charToAscii(char caracter) {
 
 		return (int) caracter;
 
 	}
+
+	/**
+	 * Convierte una cadena de caracteres a un entero.
+	 *
+	 * @param cadena La cadena a convertir.
+	 * @return El entero resultante.
+	 * @throws NumberFormatException Si la cadena no representa un entero válido.
+	 */
 
 	public int cadenaAEntero(String cadena) {
 
@@ -869,11 +1224,27 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Verifica si un número entero es par.
+	 *
+	 * @param numero El número a verificar.
+	 * @return {@code true} si el número es par, {@code false} si es impar.
+	 */
+
 	public static boolean esPar(int numero) {
 
 		return numero % 2 == 0;
 
 	}
+
+	/**
+	 * Redondea un número de doble precisión a una cantidad específica de decimales.
+	 *
+	 * @param numero    El número a redondear.
+	 * @param decimales La cantidad de decimales a mantener.
+	 * @return El número redondeado.
+	 * @throws IllegalArgumentException Si el número de decimales es negativo.
+	 */
 
 	public static double redondearDouble(double numero, int decimales) {
 
@@ -891,6 +1262,14 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte una imagen JPG a PNG.
+	 *
+	 * @param jpgFilePath La ruta del archivo JPG.
+	 * @param pngFilePath La ruta del archivo PNG de salida.
+	 * @throws IOException Si ocurre un error durante la conversión.
+	 */
+
 	public static void convertJPGtoPNG(String jpgFilePath, String pngFilePath) throws IOException {
 
 		BufferedImage bufferedImage = ImageIO.read(new File(jpgFilePath));
@@ -902,6 +1281,14 @@ public abstract class JMthos {
 
 		ImageIO.write(newBufferedImage, "png", new File(pngFilePath));
 	}
+
+	/**
+	 * Convierte una imagen PNG a JPG.
+	 *
+	 * @param jpgFilePath La ruta del archivo PNG.
+	 * @param pngFilePath La ruta del archivo JPG de salida.
+	 * @throws IOException Si ocurre un error durante la conversión.
+	 */
 
 	public static void convertPNGtoJPG(String pngFilePath, String jpgFilePath) throws IOException {
 
@@ -915,6 +1302,13 @@ public abstract class JMthos {
 		ImageIO.write(newBufferedImage, "jpg", new File(jpgFilePath));
 
 	}
+
+	/**
+	 * Centra un JTextPane en su contenedor.
+	 *
+	 * @param textPane El JTextPane a centrar.
+	 * @return El JTextPane centrado.
+	 */
 
 	public static JTextPane centrarJTextPane(JTextPane textPane) {
 
@@ -930,6 +1324,12 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Crea un StyledDocument con alineación centrada.
+	 *
+	 * @return El StyledDocument con alineación centrada.
+	 */
+
 	public static StyledDocument centrarJTextPane() {
 
 		StyleContext context = new StyleContext();
@@ -941,6 +1341,12 @@ public abstract class JMthos {
 		return new DefaultStyledDocument(context);
 
 	}
+
+	/**
+	 * Centra un JFrame en la pantalla.
+	 *
+	 * @param frame El JFrame a centrar.
+	 */
 
 	public static void centrarJFrame(JFrame frame) {
 
@@ -955,6 +1361,12 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Configura un JComboBox para que los elementos estén centrados.
+	 *
+	 * @param comboBox El JComboBox a configurar.
+	 */
 
 	public static void redondearComboBx(JComboBox<?> comboBox) {
 
@@ -974,6 +1386,15 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Redondea un número de punto flotante a una cantidad específica de decimales.
+	 *
+	 * @param numero    El número a redondear.
+	 * @param decimales La cantidad de decimales a mantener.
+	 * @return El número redondeado.
+	 * @throws IllegalArgumentException Si el número de decimales es negativo.
+	 */
+
 	public static float redondearFloat(float numero, int decimales) {
 
 		if (decimales < 0) {
@@ -990,7 +1411,74 @@ public abstract class JMthos {
 
 	}
 
-	public static int dividirYRedondear(int numerador, int denominador) {
+	/**
+	 * Divide dos números enteros y redondea el resultado al entero más cercano.
+	 *
+	 * @param numerador   El numerador.
+	 * @param denominador El denominador.
+	 * @return El resultado de la división redondeado al entero más cercano.
+	 * @throws ArithmeticException Si el denominador es cero.
+	 */
+
+	public static double dividirYRedondearADouble(int numerador, int denominador) {
+
+		if (denominador == 0) {
+
+			throw new ArithmeticException("El denominador no puede ser cero.");
+
+		}
+
+		double resultado = (double) numerador / denominador;
+
+		if (numerador % denominador != 0) {
+
+			resultado = Math.ceil(resultado);
+
+		}
+
+		return resultado;
+
+	}
+
+	/**
+	 * Divide dos números enteros y redondea el resultado al entero más cercano.
+	 *
+	 * @param numerador   El numerador.
+	 * @param denominador El denominador.
+	 * @return El resultado de la división redondeado al entero más cercano.
+	 * @throws ArithmeticException Si el denominador es cero.
+	 */
+
+	public static float dividirYRedondearAFloat(int numerador, int denominador) {
+
+		if (denominador == 0) {
+
+			throw new ArithmeticException("El denominador no puede ser cero.");
+
+		}
+
+		float resultado = (float) numerador / denominador;
+
+		if (numerador % denominador > 0) {
+
+			resultado = (float) Math.ceil(resultado);
+
+		}
+
+		return resultado;
+
+	}
+
+	/**
+	 * Divide dos números enteros y redondea el resultado al entero más cercano.
+	 *
+	 * @param numerador   El numerador.
+	 * @param denominador El denominador.
+	 * @return El resultado de la división redondeado al entero más cercano.
+	 * @throws ArithmeticException Si el denominador es cero.
+	 */
+
+	public static int dividirYRedondearAEntero(int numerador, int denominador) {
 
 		if (denominador == 0) {
 
@@ -1010,17 +1498,42 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Verifica si la tecla presionada es Enter.
+	 *
+	 * @param e El evento de teclado.
+	 * @return {@code true} si la tecla presionada es Enter, {@code false} en caso
+	 *         contrario.
+	 */
+
 	public static boolean isEnter(KeyEvent e) {
 
 		return (e.getKeyCode() == KeyEvent.VK_ENTER) ? true : false;
 
 	}
 
+	/**
+	 * Verifica si el evento de rueda de desplazamiento está moviendo hacia abajo.
+	 *
+	 * @param e El evento de rueda de desplazamiento.
+	 * @return {@code true} si el evento indica un movimiento hacia abajo,
+	 *         {@code false} en caso contrario.
+	 */
+
 	public static boolean scrollHaciaAbajo(MouseWheelEvent e) {
 
 		return (e.getWheelRotation() == 1) ? true : false;
 
 	}
+
+	/**
+	 * Ejecuta una consulta SQLite y devuelve los resultados.
+	 *
+	 * @param dbName  El nombre de la base de datos SQLite.
+	 * @param query   La consulta SQL.
+	 * @param columns Las columnas de las cuales se desea obtener los resultados.
+	 * @return Una lista de resultados.
+	 */
 
 	public static ArrayList<String> selectSQlite(String dbName, String query, List<String> columns) {
 
@@ -1064,6 +1577,16 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Inserta datos en una tabla SQLite.
+	 * 
+	 * @param db      Nombre de la base de datos SQLite.
+	 * @param table   Nombre de la tabla en la que se insertarán los datos.
+	 * @param columns Lista de nombres de columnas en las que se insertarán los
+	 *                datos.
+	 * @param values  Lista de valores que se insertarán en las columnas.
+	 */
+
 	public static void insertSQLite(String db, String table, List<String> columns, List<String> values) {
 
 		try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db);
@@ -1088,6 +1611,17 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Encuentra la posición de una subcadena específica en una cadena, dado un
+	 * número de ocurrencia.
+	 * 
+	 * @param cadena    La cadena en la que se buscará.
+	 * @param subcadena La subcadena que se buscará.
+	 * @param indice    El número de ocurrencia que se quiere encontrar.
+	 * @return La posición de la ocurrencia especificada de la subcadena en la
+	 *         cadena, o -1 si no se encuentra esa ocurrencia.
+	 */
+
 	public static int encontrarAparicion(String cadena, String subcadena, int indice) {
 
 		int aparicionesEncontradas = 0;
@@ -1101,6 +1635,7 @@ public abstract class JMthos {
 			if (posicion == -1) {
 
 				return -1;
+
 			}
 
 			aparicionesEncontradas++;
@@ -1110,6 +1645,15 @@ public abstract class JMthos {
 		return posicion;
 
 	}
+
+	/**
+	 * Encuentra todas las posiciones de una cadena dentro de un texto.
+	 * 
+	 * @param texto  El texto en el que se buscarán las posiciones.
+	 * @param cadena La cadena cuyas posiciones se buscarán.
+	 * @return Una lista de todas las posiciones donde se encuentra la cadena dentro
+	 *         del texto.
+	 */
 
 	public static List<Integer> encontrarPosiciones(String texto, String cadena) {
 
@@ -1129,6 +1673,16 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Reemplaza todas las ocurrencias de una subcadena en un texto por una lista de
+	 * reemplazos en orden.
+	 * 
+	 * @param texto            El texto original.
+	 * @param textoAReemplazar La subcadena que se reemplazará.
+	 * @param reemplazos       La lista de cadenas de reemplazo.
+	 * @return El texto con las reemplazos aplicados.
+	 */
+
 	public static String reemplazarPosiciones(String texto, String textoAReemplazar, List<String> reemplazos) {
 
 		List<Integer> posiciones = encontrarPosiciones(texto, textoAReemplazar);
@@ -1137,11 +1691,15 @@ public abstract class JMthos {
 
 		int offset = 0;
 
+		String reemplazo = "";
+
+		int posicionActual;
+
 		for (int i = 0; i < posiciones.size(); i++) {
 
-			String reemplazo = reemplazos.get(i % reemplazos.size());
+			reemplazo = reemplazos.get(i % reemplazos.size());
 
-			int posicionActual = posiciones.get(i) + offset;
+			posicionActual = posiciones.get(i) + offset;
 
 			mensaje.replace(posicionActual, posicionActual + textoAReemplazar.length(), reemplazo);
 
@@ -1153,7 +1711,17 @@ public abstract class JMthos {
 
 	}
 
-	public static String ListaAString(List<String> lista, String separador) {
+	/**
+	 * Convierte una lista de rutas de archivos a una sola cadena separada por un
+	 * delimitador específico.
+	 * 
+	 * @param lista     La lista de rutas de archivos.
+	 * @param separador El delimitador que se usará para separar las rutas en la
+	 *                  cadena resultante.
+	 * @return Una cadena con las rutas de archivos separadas por el delimitador.
+	 */
+
+	public static String listaAString(List<String> lista, String separador) {
 
 		LinkedList<String> archivos = lista.stream().filter(path -> !Files.isDirectory(Paths.get(path)))
 				.collect(Collectors.toCollection(LinkedList::new));
@@ -1161,6 +1729,14 @@ public abstract class JMthos {
 		return String.join(separador, archivos);
 
 	}
+
+	/**
+	 * Carga una imagen desde el archivo especificado.
+	 *
+	 * @param imagePath Ruta del archivo de imagen a cargar.
+	 * @return La imagen cargada como un objeto BufferedImage, o null si ocurre un
+	 *         error al cargarla.
+	 */
 
 	public static BufferedImage loadImage(String imagePath) {
 
@@ -1177,6 +1753,18 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Renombra archivos dentro de una carpeta según la extensión de entrada y
+	 * salida especificadas.
+	 *
+	 * @param carpeta          Ruta de la carpeta que contiene los archivos a
+	 *                         renombrar.
+	 * @param extensionEntrada Extensión de los archivos antes del renombrado.
+	 * @param extensionSalida  Extensión de los archivos después del renombrado.
+	 * @param borrar           Indica si se deben eliminar los archivos originales
+	 *                         después de convertirlos (solo aplica a imágenes).
+	 */
 
 	public static void renombrarPorExtension(String carpeta, String extensionEntrada, String extensionSalida,
 			boolean borrar) {
@@ -1214,6 +1802,7 @@ public abstract class JMthos {
 			break;
 
 		default:
+
 			break;
 
 		}
@@ -1254,13 +1843,16 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Muestra archivos en una ruta de Linux, eliminando el punto del nombre de
+	 * archivo si es oculto.
+	 *
+	 * @param path Ruta de la carpeta que contiene los archivos a mostrar.
+	 */
+
 	public static void mostrarArchivosDeLinux(String path) {
 
 		LinkedList<String> lista = (LinkedList<String>) listar(path, "all", false, true);
-
-		String salida = "";
-
-		String salida2 = "";
 
 		for (String texto : lista) {
 
@@ -1268,9 +1860,9 @@ public abstract class JMthos {
 
 				if ((texto.substring(texto.lastIndexOf("/") + 1, texto.lastIndexOf("/") + 2).equals("."))) {
 
-					salida = texto.substring(0, texto.lastIndexOf("/") + 1);
+					String salida = texto.substring(0, texto.lastIndexOf("/") + 1);
 
-					salida2 = texto.substring(texto.lastIndexOf("/") + 2, texto.length());
+					String salida2 = texto.substring(texto.lastIndexOf("/") + 2, texto.length());
 
 					new File(texto).renameTo(new File(salida + salida2));
 
@@ -1285,24 +1877,28 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Muestra archivos ocultos en una ruta de Linux, eliminando el punto del nombre
+	 * de archivo si es oculto.
+	 *
+	 * @param path      Ruta de la carpeta que contiene los archivos a mostrar.
+	 * @param extension Extensión de los archivos a buscar.
+	 */
 
 	public static void mostrarArchivosOcultosDeLinux(String path, String extension) {
 
 		LinkedList<String> lista = (LinkedList<String>) listar(path, extension, false, true);
 
-		String salida = "";
-
-		String salida2 = "";
-
 		for (String texto : lista) {
 
 			try {
 
 				if ((texto.substring(texto.lastIndexOf("/") + 1, texto.lastIndexOf("/") + 2).equals("."))) {
 
-					salida = texto.substring(0, texto.lastIndexOf("/") + 1);
+					String salida = texto.substring(0, texto.lastIndexOf("/") + 1);
 
-					salida2 = texto.substring(texto.lastIndexOf("/") + 2, texto.length());
+					String salida2 = texto.substring(texto.lastIndexOf("/") + 2, texto.length());
 
 					new File(texto).renameTo(new File(salida + salida2));
 
@@ -1317,6 +1913,13 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Agrega un separador al final de la cadena si no existe ya.
+	 *
+	 * @param texto Cadena a la que se agregará el separador.
+	 * @return Cadena con el separador agregado al final.
+	 */
 
 	public static String ponerSeparador(String texto) {
 
@@ -1329,6 +1932,14 @@ public abstract class JMthos {
 		return texto;
 
 	}
+
+	/**
+	 * Encuentra la cadena más larga en una lista de cadenas.
+	 *
+	 * @param list Lista de cadenas en la que se buscará la más larga.
+	 * @return La cadena más larga encontrada en la lista, o null si la lista está
+	 *         vacía.
+	 */
 
 	public static String findLongestString(List<String> list) {
 
@@ -1356,6 +1967,14 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Calcula el porcentaje de un valor respecto al total.
+	 *
+	 * @param valor Valor del cual se desea calcular el porcentaje.
+	 * @param total Valor total del cual se calculará el porcentaje.
+	 * @return Porcentaje calculado como un entero.
+	 */
+
 	public static int calcularPorcentaje(int valor, int total) {
 
 		float resultado = (valor * 100) / total;
@@ -1373,6 +1992,13 @@ public abstract class JMthos {
 		return salida;
 
 	}
+
+	/**
+	 * Aumenta el día actual por un valor dado y devuelve la fecha resultante.
+	 *
+	 * @param valor Número de días que se desea aumentar.
+	 * @return Fecha resultante como un String en formato de fecha.
+	 */
 
 	public static String aumentarDia(int valor) {
 
@@ -1392,6 +2018,15 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Obtiene el nombre del archivo con su extensión desde una ruta de archivo
+	 * completa.
+	 *
+	 * @param archivo Ruta del archivo del cual se desea obtener el nombre con
+	 *                extensión.
+	 * @return Nombre del archivo con su extensión.
+	 */
+
 	public static String saberNombreArchivoConExtension(String archivo) {
 
 		String resultado = "";
@@ -1409,6 +2044,13 @@ public abstract class JMthos {
 		return resultado;
 
 	}
+
+	/**
+	 * Convierte un Icono en un objeto BufferedImage.
+	 *
+	 * @param icon Icono que se desea convertir.
+	 * @return Objeto BufferedImage generado desde el Icono.
+	 */
 
 	public static BufferedImage iconToBufferedImage(Icon icon) {
 
@@ -1433,6 +2075,18 @@ public abstract class JMthos {
 		return bufferedImage;
 
 	}
+
+	/**
+	 * Obtiene las dimensiones de una imagen después de redimensionarla, si se
+	 * requiere.
+	 *
+	 * @param originalImage Imagen original de la cual se desean obtener las
+	 *                      dimensiones.
+	 * @param newWidth      Ancho deseado para la imagen redimensionada.
+	 * @param newHeight     Alto deseado para la imagen redimensionada.
+	 * @param resize        Indica si se debe redimensionar la imagen.
+	 * @return Punto con las dimensiones resultantes de la imagen.
+	 */
 
 	public static Point getSizeOfImage(BufferedImage originalImage, int newWidth, int newHeight, boolean resize) {
 
@@ -1464,6 +2118,14 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Carga una imagen desde un archivo.
+	 *
+	 * @param image Ruta del archivo de imagen que se desea cargar.
+	 * @return La imagen cargada como un objeto BufferedImage, o null si ocurre
+	 *         algún error.
+	 */
+
 	public static BufferedImage loadFileImage(String image) {
 
 		try {
@@ -1479,6 +2141,12 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Copia el texto especificado en el portapapeles del sistema.
+	 *
+	 * @param text Texto que se desea copiar en el portapapeles.
+	 */
 
 	public static void copy(String text) {
 
@@ -1496,21 +2164,32 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Verifica si el código de tecla proporcionado corresponde a un caracter
+	 * imprimible.
+	 *
+	 * @param keyCode Código de tecla que se desea verificar.
+	 * @return true si el código de tecla no corresponde a un caracter imprimible,
+	 *         false en caso contrario.
+	 */
+
 	public static boolean tieneCaracterNoImprimible(int keyCode) {
 
 		return !(keyCode != 112 && keyCode != 113 && keyCode != 114 && keyCode != 115 && keyCode != 116
-
 				&& keyCode != 117 && keyCode != 19 && keyCode != 118 && keyCode != 119 && keyCode != 120
-
 				&& keyCode != 121 && keyCode != 122 && keyCode != 123 && keyCode != 27 && keyCode != 16 && keyCode != 17
-
 				&& keyCode != 18 && keyCode != 65406 && keyCode != 155 && keyCode != 127 && keyCode != 33
-
 				&& keyCode != 34 && keyCode != 20 && keyCode != 35 && keyCode != 36 && keyCode != 144 && keyCode != 37
-
 				&& keyCode != 38 && keyCode != 39 && keyCode != 40);
 
 	}
+
+	/**
+	 * Calcula una cadena de espacios del tamaño especificado.
+	 *
+	 * @param numeroEspacios Número de espacios que se desea generar.
+	 * @return Cadena de espacios generada.
+	 */
 
 	public static String calcularNumeroEspacios(int numeroEspacios) {
 
@@ -1524,21 +2203,40 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte un ArrayList en una LinkedList.
+	 *
+	 * @param arrayList ArrayList que se desea convertir.
+	 * @param <T>       Tipo de los elementos contenidos en la lista.
+	 * @return LinkedList generada desde el ArrayList proporcionado.
+	 */
+
 	public static <T> LinkedList<T> convertirArrayListALinkedList(ArrayList<T> arrayList) {
 
-		LinkedList<T> linkedList = new LinkedList<>(arrayList);
-
-		return linkedList;
+		return new LinkedList<>(arrayList);
 
 	}
+
+	/**
+	 * Convierte una LinkedList en un ArrayList.
+	 *
+	 * @param linkedList LinkedList que se desea convertir.
+	 * @param <T>        Tipo de los elementos contenidos en la lista.
+	 * @return ArrayList generado desde la LinkedList proporcionada.
+	 */
 
 	public static <T> ArrayList<T> convertirLinkedListAArrayList(LinkedList<T> linkedList) {
 
-		ArrayList<T> arrayList = new ArrayList<>(linkedList);
-
-		return arrayList;
+		return new ArrayList<>(linkedList);
 
 	}
+
+	/**
+	 * Calcula el seno de un ángulo dado en grados.
+	 *
+	 * @param angulo Ángulo en grados del cual se desea calcular el seno.
+	 * @return Seno del ángulo dado.
+	 */
 
 	public static double calcularSeno(double angulo) {
 
@@ -1546,17 +2244,40 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Calcula el coseno de un ángulo dado en grados.
+	 *
+	 * @param angulo Ángulo en grados del cual se desea calcular el coseno.
+	 * @return Coseno del ángulo dado.
+	 */
+
 	public static double calcularCoseno(double angulo) {
 
 		return Math.cos(Math.toRadians(angulo));
 
 	}
 
+	/**
+	 * Calcula la tangente de un ángulo dado en grados.
+	 *
+	 * @param angulo Ángulo en grados del cual se desea calcular la tangente.
+	 * @return Tangente del ángulo dado.
+	 */
+
 	public static double calcularTangente(double angulo) {
 
 		return Math.tan(Math.toRadians(angulo));
 
 	}
+
+	/**
+	 * Redimensiona una imagen representada como un objeto Image.
+	 *
+	 * @param originalImage Imagen original que se desea redimensionar.
+	 * @param newWidth      Nuevo ancho de la imagen redimensionada.
+	 * @param newHeight     Nuevo alto de la imagen redimensionada.
+	 * @return Imagen redimensionada como un objeto Image.
+	 */
 
 	public static Image resizeImage(Image originalImage, int newWidth, int newHeight) {
 
@@ -1572,6 +2293,15 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Redimensiona una imagen representada como un objeto BufferedImage.
+	 *
+	 * @param originalImage Imagen original que se desea redimensionar.
+	 * @param newWidth      Nuevo ancho de la imagen redimensionada.
+	 * @param newHeight     Nuevo alto de la imagen redimensionada.
+	 * @return Imagen redimensionada como un objeto BufferedImage.
+	 */
+
 	public static BufferedImage resizeImage(BufferedImage originalImage, int newWidth, int newHeight) {
 
 		BufferedImage resizedImage = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_ARGB);
@@ -1586,13 +2316,21 @@ public abstract class JMthos {
 
 	}
 
-	public static BufferedImage resizeImage(String path, int newWidth, int newHeight) {
+	/**
+	 * Redimensiona una imagen cargada desde un archivo en el disco.
+	 *
+	 * @param path      Ruta del archivo de imagen que se desea redimensionar.
+	 * @param newWidth  Nuevo ancho de la imagen redimensionada.
+	 * @param newHeight Nuevo alto de la imagen redimensionada.
+	 * @return Imagen redimensionada como un objeto BufferedImage, o null si ocurre
+	 *         algún error.
+	 */
 
-		BufferedImage originalImage;
+	public static BufferedImage resizeImage(String path, int newWidth, int newHeight) {
 
 		try {
 
-			originalImage = ImageIO.read(new File(path));
+			BufferedImage originalImage = ImageIO.read(new File(path));
 
 			int originalWidth = originalImage.getWidth();
 
@@ -1617,17 +2355,46 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Verifica si un texto cumple con una expresión regular dada.
+	 *
+	 * @param texto  Texto que se desea verificar.
+	 * @param patron Expresión regular que se utilizará para la verificación.
+	 * @return true si el texto cumple con la expresión regular, false en caso
+	 *         contrario.
+	 */
+
 	public static boolean cumpleLaExpresionRegular(String texto, String patron) {
 
 		return Pattern.compile(patron, Pattern.CASE_INSENSITIVE).matcher(texto).find();
 
 	}
 
+	/**
+	 * Obtiene la fecha de hoy en formato de LocalDate.
+	 *
+	 * @param separador Separador a utilizar en la fecha.
+	 * @param english   true para formato "año-mes-día", false para formato
+	 *                  "día-mes-año".
+	 * @param zero      true para agregar cero en meses y días menores a 10.
+	 * @return Fecha de hoy como objeto LocalDate.
+	 */
+
 	public static LocalDate hoy(String separador, boolean english, boolean zero) {
 
 		return LocalDate.parse(saberFechaActual(separador, english, zero), DateTimeFormatter.ISO_LOCAL_DATE);
 
 	}
+
+	/**
+	 * Obtiene la fecha de hoy en formato de String.
+	 *
+	 * @param separador Separador a utilizar en la fecha.
+	 * @param english   true para formato "año-mes-día", false para formato
+	 *                  "día-mes-año".
+	 * @param zero      true para agregar cero en meses y días menores a 10.
+	 * @return Fecha de hoy en formato de String según los parámetros especificados.
+	 */
 
 	public static String saberFechaActual(String separador, boolean english, boolean zero) {
 
@@ -1663,6 +2430,16 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte una imagen a otro formato especificado.
+	 *
+	 * @param rutaAbsoluta Ruta absoluta del archivo de imagen que se desea
+	 *                     convertir.
+	 * @param extension    Extensión del formato al cual se desea convertir la
+	 *                     imagen.
+	 * @return true si la conversión fue exitosa, false si ocurrió algún error.
+	 */
+
 	public static boolean convertImg(String rutaAbsoluta, String extension) {
 
 		boolean result = false;
@@ -1694,112 +2471,17 @@ public abstract class JMthos {
 
 	}
 
-	public static void convertirImagen(String extensionEntrada, String extensionSalida, String folder)
-			throws IOException {
-
-		LinkedList<String> imagenesPng = (LinkedList<String>) listar(folder, extensionEntrada, false, true);
-
-		File beforeFile;
-
-		File afterFile;
-
-		for (int i = 0; i < imagenesPng.size(); i++) {
-
-			beforeFile = new File(imagenesPng.get(i));
-
-			afterFile = new File(
-					imagenesPng.get(i).substring(0, imagenesPng.get(i).lastIndexOf(".") + 1) + extensionSalida);
-
-			BufferedImage beforeImg = ImageIO.read(beforeFile);
-
-			BufferedImage afterImg = new BufferedImage(beforeImg.getWidth(), beforeImg.getHeight(),
-					BufferedImage.TYPE_INT_RGB);
-
-			afterImg.createGraphics().drawImage(beforeImg, 0, 0, Color.white, null);
-
-			ImageIO.write(afterImg, extensionSalida, afterFile);
-
-			eliminarFichero(imagenesPng.get(i));
-
-		}
-
-	}
-
-	static byte[] createChecksum(String filename) throws NoSuchAlgorithmException, IOException {
-
-		InputStream fis = null;
-
-		MessageDigest complete = MessageDigest.getInstance("SHA-256");
-
-		try {
-
-			fis = new FileInputStream(filename);
-
-			byte[] buffer = new byte[1024];
-
-			int numRead;
-
-			do {
-
-				numRead = fis.read(buffer);
-
-				if (numRead > 0) {
-
-					complete.update(buffer, 0, numRead);
-
-				}
-
-			}
-
-			while (numRead != -1);
-
-			fis.close();
-
-		}
-
-		catch (IOException e) {
-
-			if (fis != null) {
-
-				fis.close();
-
-			}
-
-		}
-
-		return complete.digest();
-
-	}
-
-	public static String getSHA256Checksum(String filename) {
-
-		String result = "";
-
-		try {
-
-			byte[] b;
-
-			b = createChecksum(filename);
-
-			StringBuilder bld = new StringBuilder();
-
-			for (int i = 0; i < b.length; i++) {
-
-				bld.append(Integer.toString((b[i] & 0xff) + 0x100, 16).substring(1));
-
-			}
-
-			result = bld.toString();
-
-		}
-
-		catch (Exception e) {
-
-		}
-
-		return result;
-
-	}
+	/**
+	 * Redimensiona una imagen desde la ruta de entrada especificada hacia la ruta
+	 * de salida con las dimensiones proporcionadas.
+	 * 
+	 * @param inputImagePath  Ruta de la imagen de entrada.
+	 * @param outputImagePath Ruta donde se guardará la imagen redimensionada.
+	 * @param scaledWidth     Ancho al cual redimensionar la imagen, en píxeles.
+	 * @param scaledHeight    Alto al cual redimensionar la imagen, en píxeles.
+	 * @throws IOException Si ocurre un error durante la lectura o escritura del
+	 *                     archivo de imagen.
+	 */
 
 	public static void resizeImage(String inputImagePath, String outputImagePath, int scaledWidth, int scaledHeight)
 			throws IOException {
@@ -1822,6 +2504,13 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Elimina un archivo o directorio especificado por la ruta proporcionada.
+	 * 
+	 * @param archivo Ruta al archivo o directorio a eliminar.
+	 * @throws IOException Si ocurre un error durante la eliminación.
+	 */
+
 	public static void eliminarFichero(String archivo) throws IOException {
 
 		File fichero = new File(archivo);
@@ -1843,6 +2532,19 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Convierte una imagen WebP a formato PNG o WebP según la bandera 'png' y
+	 * opcionalmente elimina el archivo fuente.
+	 * 
+	 * @param png             True para convertir a PNG, false para convertir a
+	 *                        WebP.
+	 * @param src             Ruta al archivo WebP de origen.
+	 * @param dest            Ruta de destino para la imagen convertida.
+	 * @param eliminarArchivo True para eliminar el archivo fuente después de la
+	 *                        conversión.
+	 * @throws IOException Si ocurre un error durante la conversión o eliminación.
+	 */
 
 	public static void webp2Png(boolean png, String src, String dest, boolean eliminarArchivo) throws IOException {
 
@@ -1873,6 +2575,16 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Lista archivos o carpetas en un directorio basado en criterios especificados
+	 * y los agrega a una lista.
+	 * 
+	 * @param ruta    Ruta al directorio a listar.
+	 * @param lista   Lista a la cual se agregarán nombres de archivos o carpetas.
+	 * @param carpeta True para incluir carpetas en la lista, false de lo contrario.
+	 * @return Una lista ordenada de rutas de archivos o carpetas.
+	 */
 
 	public static List<String> listarConLista(String ruta, List<String> lista, boolean carpeta) {
 
@@ -1920,6 +2632,144 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte imágenes de un formato de entrada a un formato de salida en una
+	 * carpeta específica.
+	 *
+	 * @param extensionEntrada Extensión del formato de entrada de las imágenes.
+	 * @param extensionSalida  Extensión del formato al cual se desea convertir las
+	 *                         imágenes.
+	 * @param folder           Carpeta que contiene las imágenes que se desean
+	 *                         convertir.
+	 * @throws IOException Si ocurre un error de lectura o escritura de archivos.
+	 */
+
+	public static void convertirImagen(String extensionEntrada, String extensionSalida, String folder)
+			throws IOException {
+
+		LinkedList<String> imagenes = (LinkedList<String>) listar(folder, extensionEntrada, false, true);
+
+		File beforeFile;
+
+		File afterFile;
+
+		BufferedImage beforeImg;
+
+		BufferedImage afterImg;
+
+		for (String imagen : imagenes) {
+
+			beforeFile = new File(imagen);
+
+			afterFile = new File(imagen.substring(0, imagen.lastIndexOf(".") + 1) + extensionSalida);
+
+			beforeImg = ImageIO.read(beforeFile);
+
+			afterImg = new BufferedImage(beforeImg.getWidth(), beforeImg.getHeight(), BufferedImage.TYPE_INT_RGB);
+
+			afterImg.createGraphics().drawImage(beforeImg, 0, 0, Color.white, null);
+
+			ImageIO.write(afterImg, extensionSalida, afterFile);
+
+			eliminarFichero(imagen);
+
+		}
+
+	}
+
+	/**
+	 * Calcula el checksum SHA-256 de un archivo.
+	 *
+	 * @param filename Nombre del archivo del cual se desea calcular el checksum.
+	 * @return Checksum SHA-256 como una cadena de caracteres.
+	 */
+
+	static byte[] createChecksum(String filename) throws NoSuchAlgorithmException, IOException {
+
+		InputStream fis = null;
+
+		MessageDigest complete = MessageDigest.getInstance("SHA-256");
+
+		try {
+
+			fis = new FileInputStream(filename);
+
+			byte[] buffer = new byte[1024];
+
+			int numRead;
+
+			do {
+
+				numRead = fis.read(buffer);
+
+				if (numRead > 0) {
+
+					complete.update(buffer, 0, numRead);
+
+				}
+
+			}
+
+			while (numRead != -1);
+
+		}
+
+		finally {
+
+			if (fis != null) {
+
+				fis.close();
+
+			}
+
+		}
+
+		return complete.digest();
+
+	}
+
+	/**
+	 * Obtiene el checksum SHA-256 de un archivo como una cadena hexadecimal.
+	 *
+	 * @param filename Nombre del archivo del cual se desea obtener el checksum.
+	 * @return Checksum SHA-256 como una cadena hexadecimal.
+	 */
+
+	public static String getSHA256Checksum(String filename) {
+
+		String result = "";
+
+		try {
+
+			byte[] b = createChecksum(filename);
+
+			StringBuilder bld = new StringBuilder();
+
+			for (int i = 0; i < b.length; i++) {
+
+				bld.append(Integer.toString((b[i] & 0xff) + 0x100, 16).substring(1));
+
+			}
+
+			result = bld.toString();
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+		return result;
+
+	}
+
+	/**
+	 * Converts a PNG image to JPG format.
+	 * 
+	 * @param file Path to the PNG file to convert.
+	 * @throws IOException If there is an error reading or writing the image file.
+	 */
+
 	public static void png2Jpg(String file) throws IOException {
 
 		File beforeFile = new File(file);
@@ -1938,6 +2788,13 @@ public abstract class JMthos {
 		eliminarFichero(file);
 
 	}
+
+	/**
+	 * Checks if a file is an image file (supports multiple formats).
+	 * 
+	 * @param file Path to the file to check.
+	 * @return True if the file is a recognized image format, false otherwise.
+	 */
 
 	public static boolean esImagen(String file) {
 
@@ -1961,11 +2818,16 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Converts all PNG images in a specified folder to JPG format.
+	 * 
+	 * @param folder Path to the folder containing PNG images to convert.
+	 * @throws IOException If there is an error reading or writing any image file.
+	 */
+
 	public static void png2JpgInFolder(String folder) throws IOException {
 
-		LinkedList<String> imagenesPng = new LinkedList<String>();
-
-		imagenesPng = (LinkedList<String>) listar(folder, "png", false, true);
+		LinkedList<String> imagenesPng = (LinkedList<String>) listar(folder, "png", false, true);
 
 		File beforeFile;
 
@@ -1991,6 +2853,17 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Lists files and folders in a directory based on given criteria.
+	 * 
+	 * @param ruta         Path to the directory to list.
+	 * @param extension    File extension filter ("all" for all files, "videos",
+	 *                     "images", or specific extension).
+	 * @param carpeta      Whether to include folders in the listing.
+	 * @param absolutePath Whether to return absolute paths.
+	 * @return A sorted list of file or folder paths.
+	 */
 
 	public static List<String> listar(String ruta, String extension, boolean carpeta, boolean absolutePath) {
 
@@ -2046,7 +2919,7 @@ public abstract class JMthos {
 
 					case "videos":
 
-						if (esVideo(ruta + fichero)) {
+						if (tieneExtensionDeVideo(ruta + fichero)) {
 
 							saberSiEsRutaAbsoluta(ruta, absolutePath, lista, fichero);
 
@@ -2088,6 +2961,20 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Lista archivos o carpetas en un directorio basado en una lista de extensiones
+	 * especificada y opcionalmente agrega rutas absolutas.
+	 * 
+	 * @param ruta         Ruta al directorio a listar.
+	 * @param lista        Array de extensiones de archivos a incluir.
+	 * @param carpeta      True para incluir carpetas en la lista, false de lo
+	 *                     contrario.
+	 * @param absolutePath True para retornar rutas absolutas, false para rutas
+	 *                     relativas.
+	 * @return Una lista ordenada de rutas de archivos o carpetas que coinciden con
+	 *         los criterios.
+	 */
+
 	public static List<String> listarConArray(String ruta, String[] lista, boolean carpeta, boolean absolutePath) {
 
 		if (!ruta.endsWith(saberSeparador())) {
@@ -2128,9 +3015,8 @@ public abstract class JMthos {
 
 				extensionArchivo = saberExtension(fichero);
 
-				if ((!carpeta && folder.isFile() &&
-
-						Arrays.asList(lista).contains(extensionArchivo)) || (carpeta && folder.isDirectory())) {
+				if ((!carpeta && folder.isFile() && Arrays.asList(lista).contains(extensionArchivo))
+						|| (carpeta && folder.isDirectory())) {
 
 					saberSiEsRutaAbsoluta(ruta, absolutePath, list, fichero);
 
@@ -2145,6 +3031,17 @@ public abstract class JMthos {
 		return list;
 
 	}
+
+	/**
+	 * Agrega la ruta absoluta o relativa de un archivo o carpeta a una lista,
+	 * dependiendo del parámetro absolutePath.
+	 * 
+	 * @param ruta         Ruta base de los archivos o carpetas.
+	 * @param absolutePath True para agregar rutas absolutas, false para agregar
+	 *                     rutas relativas.
+	 * @param list         Lista donde se agregará la ruta del archivo o carpeta.
+	 * @param fichero      Nombre del archivo o carpeta.
+	 */
 
 	static void saberSiEsRutaAbsoluta(String ruta, boolean absolutePath, LinkedList<String> list, String fichero) {
 
@@ -2161,6 +3058,16 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Elimina los espacios adicionales de una cadena y opcionalmente elimina todos
+	 * los espacios.
+	 * 
+	 * @param cadena Cadena de entrada para eliminar espacios.
+	 * @param filtro True para eliminar todos los espacios, false para conservar un
+	 *               solo espacio entre palabras.
+	 * @return Cadena modificada sin espacios adicionales.
+	 */
 
 	public static String eliminarEspacios(String cadena, boolean filtro) {
 
@@ -2180,6 +3087,13 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Obtiene la fecha y hora actual formateada según el patrón especificado.
+	 * 
+	 * @param pattern Patrón de formato de fecha y hora.
+	 * @return Cadena formateada que representa la fecha y hora actuales.
+	 */
+
 	public static String saberFechaYHoraActual(String pattern) {
 
 		DateTimeFormatter dtf = DateTimeFormatter.ofPattern(pattern);
@@ -2188,13 +3102,28 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Obtiene la fecha actual en formato "yyyy-MM-dd".
+	 * 
+	 * @return Cadena que representa la fecha actual en formato "yyyy-MM-dd".
+	 */
+
 	public static String saberFechaActual() {
 
 		Calendar c = Calendar.getInstance();
 
-		return c.get(Calendar.YEAR) + "-" + c.get(Calendar.MONTH) + 1 + "-" + c.get(Calendar.DATE);
+		return c.get(Calendar.YEAR) + "-" + (c.get(Calendar.MONTH) + 1) + "-" + c.get(Calendar.DATE);
 
 	}
+
+	/**
+	 * Obtiene la fecha y hora actual formateada en el formato deseado, inglés o
+	 * estándar.
+	 * 
+	 * @param englishFormat True para formato inglés "yyyy/MM/dd HH:mm:ss", false
+	 *                      para formato estándar "dd/MM/yyyy HH:mm:ss".
+	 * @return Cadena que representa la fecha y hora actual formateada.
+	 */
 
 	public static String saberFechaYHoraActual(boolean englishFormat) {
 
@@ -2211,6 +3140,15 @@ public abstract class JMthos {
 		return dtf.format(LocalDateTime.now());
 
 	}
+
+	/**
+	 * Verifica si la ruta de archivo especificada tiene una extensión de imagen
+	 * reconocida.
+	 * 
+	 * @param absolutePath Ruta absoluta del archivo para verificar la extensión.
+	 * @return True si la extensión del archivo es una imagen reconocida, false de
+	 *         lo contrario.
+	 */
 
 	public static boolean tieneExtensionDeImagen(String absolutePath) {
 
@@ -2250,7 +3188,16 @@ public abstract class JMthos {
 
 	}
 
-	public static boolean esVideo(String absolutePath) {
+	/**
+	 * Verifica si el archivo especificado por su ruta absoluta es un archivo de
+	 * video basado en su extensión.
+	 * 
+	 * @param absolutePath Ruta absoluta del archivo para verificar la extensión.
+	 * @return True si la extensión del archivo corresponde a un formato de video
+	 *         reconocido, false de lo contrario.
+	 */
+
+	public static boolean tieneExtensionDeVideo(String absolutePath) {
 
 		boolean resultado = false;
 
@@ -2273,7 +3220,6 @@ public abstract class JMthos {
 			break;
 
 		default:
-
 			break;
 
 		}
@@ -2281,6 +3227,13 @@ public abstract class JMthos {
 		return resultado;
 
 	}
+
+	/**
+	 * Convierte un icono en una imagen.
+	 * 
+	 * @param icon Icono a convertir en imagen.
+	 * @return Imagen resultante del icono.
+	 */
 
 	public static Image iconToImage(Icon icon) {
 
@@ -2316,6 +3269,15 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Escala una imagen a las dimensiones especificadas.
+	 * 
+	 * @param srcImg Imagen de entrada a escalar.
+	 * @param w      Ancho deseado para la imagen escalada.
+	 * @param h      Alto deseado para la imagen escalada.
+	 * @return Imagen escalada al tamaño especificado.
+	 */
+
 	public static Image getScaledImage(Image srcImg, int w, int h) {
 
 		BufferedImage resizedImg = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
@@ -2332,6 +3294,15 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Redimensiona un ImageIcon a las dimensiones especificadas.
+	 * 
+	 * @param image  ImageIcon a redimensionar.
+	 * @param width  Ancho deseado para el ImageIcon redimensionado.
+	 * @param height Alto deseado para el ImageIcon redimensionado.
+	 * @return ImageIcon redimensionado al tamaño especificado.
+	 */
+
 	public static ImageIcon resize(ImageIcon image, int width, int height) {
 
 		BufferedImage bi = new BufferedImage(width, height, Transparency.TRANSLUCENT);
@@ -2347,6 +3318,17 @@ public abstract class JMthos {
 		return new ImageIcon(bi);
 
 	}
+
+	/**
+	 * Cuenta la cantidad de archivos en una carpeta que coinciden con una extensión
+	 * específica o todos los archivos si se especifica el filtro ".".
+	 * 
+	 * @param carpeta Carpeta donde se contarán los archivos.
+	 * @param filtro  Extensión de archivo a contar o "." para contar todos los
+	 *                archivos.
+	 * @return Cantidad de archivos que coinciden con el filtro en la carpeta
+	 *         especificada.
+	 */
 
 	public static int contarFicherosPorCarpeta(String carpeta, String filtro) {
 
@@ -2384,6 +3366,17 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Cuenta la cantidad de archivos en una carpeta que coinciden con una extensión
+	 * específica o todos los archivos si se especifica el filtro ".".
+	 * 
+	 * @param carpeta Carpeta donde se contarán los archivos.
+	 * @param filtro  Extensión de archivo a contar o "." para contar todos los
+	 *                archivos.
+	 * @return Cantidad de archivos que coinciden con el filtro en la carpeta
+	 *         especificada.
+	 */
+
 	public static int contarFicherosPorCarpeta(final File carpeta, String filtro) {
 
 		int ocurrencias = 0;
@@ -2418,11 +3411,25 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Ejecuta un programa de Windows Subsystem for Linux (WSL).
+	 * 
+	 * @param programa Nombre del programa a ejecutar.
+	 * @param cmd      Indica si se debe utilizar el comando cmd.
+	 */
+
 	public static void ejecutarProgramaDeWsl(String programa, boolean cmd) {
 
 		ejecutarComando("wsl -e " + programa, cmd);
 
 	}
+
+	/**
+	 * Ejecuta un comando.
+	 * 
+	 * @param string Comando a ejecutar.
+	 * @param cmd    Indica si se debe utilizar el comando cmd.
+	 */
 
 	public static void ejecutarComando(String string, boolean cmd) {
 
@@ -2451,6 +3458,13 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Ejecuta un programa Java.
+	 * 
+	 * @param string Ruta del programa Java a ejecutar.
+	 * @param cmd    Indica si se debe utilizar el comando cmd.
+	 */
 
 	public static void ejecutarJava(String string, boolean cmd) {
 
@@ -2481,6 +3495,12 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Obtiene el portapapeles del sistema.
+	 * 
+	 * @return Objeto Clipboard que representa el portapapeles del sistema.
+	 */
+
 	private static Clipboard getSystemClipboard() {
 
 		Toolkit defaultToolkit = Toolkit.getDefaultToolkit();
@@ -2488,6 +3508,13 @@ public abstract class JMthos {
 		return defaultToolkit.getSystemClipboard();
 
 	}
+
+	/**
+	 * Obtiene los nombres de las fuentes disponibles en el entorno gráfico local.
+	 * 
+	 * @return Arreglo de cadenas que representan los nombres de las fuentes
+	 *         disponibles.
+	 */
 
 	public static String[] getFonts() {
 
@@ -2497,17 +3524,38 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Obtiene una lista de los nombres de las fuentes disponibles en el entorno
+	 * gráfico local.
+	 * 
+	 * @return Lista de cadenas que representan los nombres de las fuentes
+	 *         disponibles.
+	 */
+
 	public static List<String> obtenerFuentes() {
 
 		return Arrays.asList(getFonts());
 
 	}
 
+	/**
+	 * Obtiene la ruta del directorio actual.
+	 * 
+	 * @return Ruta canónica del directorio actual.
+	 * @throws IOException Si ocurre un error al obtener la ruta.
+	 */
+
 	public static String rutaActual() throws IOException {
 
 		return new File(".").getCanonicalPath() + saberSeparador();
 
 	}
+
+	/**
+	 * Abre el explorador de archivos en la ruta especificada.
+	 * 
+	 * @param ruta Ruta del directorio o archivo a abrir.
+	 */
 
 	public static void abrir(String ruta) {
 
@@ -2543,6 +3591,13 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Crea una carpeta en la ruta especificada.
+	 *
+	 * @param path La ruta de la carpeta a crear.
+	 * @return 200 si la carpeta se crea con éxito, 300 si ocurre una excepción.
+	 */
+
 	public static int crearCarpeta(String path) {
 
 		int respuesta;
@@ -2565,11 +3620,25 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Elimina "file:/" de la URL dada.
+	 *
+	 * @param url La URL a limpiar.
+	 * @return La URL limpia.
+	 */
+
 	public static String cleanURL(String url) {
 
 		return url.replace("file:/", "");
 
 	}
+
+	/**
+	 * Obtiene la extensión del nombre de archivo dado.
+	 *
+	 * @param nombreArchivo El nombre del archivo.
+	 * @return La extensión en minúsculas del archivo.
+	 */
 
 	public static String saberExtension(String nombreArchivo) {
 
@@ -2585,6 +3654,13 @@ public abstract class JMthos {
 		return extension.toLowerCase();
 
 	}
+
+	/**
+	 * Convierte la duración del video dada a segundos.
+	 *
+	 * @param duracionVideo La duración del video en formato HH:MM:SS.
+	 * @return La duración del video en segundos.
+	 */
 
 	public static double convertirASegundos(String duracionVideo) {
 
@@ -2632,6 +3708,14 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Cuenta las ocurrencias de una cadena específica en el texto dado.
+	 *
+	 * @param text   El texto en el que se contarán las ocurrencias.
+	 * @param search La cadena a buscar.
+	 * @return El número de ocurrencias de la cadena de búsqueda en el texto.
+	 */
+
 	public static int contarOcurrencias(String text, String search) {
 
 		int contador = 0;
@@ -2647,6 +3731,13 @@ public abstract class JMthos {
 		return contador;
 
 	}
+
+	/**
+	 * Convierte el número dado de segundos al formato HH:MM:SS.
+	 *
+	 * @param segundos El número de segundos a convertir.
+	 * @return El tiempo en formato HH:MM:SS.
+	 */
 
 	public static String calcularTiempo(long segundos) {
 
@@ -2763,6 +3854,13 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Obtiene el nombre del archivo de la ruta dada.
+	 *
+	 * @param ruta La ruta del archivo.
+	 * @return El nombre del archivo.
+	 */
+
 	public static String saberNombreArchivo(String ruta) {
 
 		String separador = saberSeparador();
@@ -2779,6 +3877,13 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Mueve un archivo desde la ruta de origen a la ruta de destino.
+	 *
+	 * @param origen  La ruta de origen del archivo.
+	 * @param destino La ruta de destino del archivo.
+	 */
+
 	public static void moverArchivo(String origen, String destino) {
 
 		try {
@@ -2793,6 +3898,13 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Escribe un archivo en la ruta especificada con las líneas proporcionadas.
+	 *
+	 * @param ruta  Ruta del archivo donde se escribirá.
+	 * @param lines Líneas que se escribirán en el archivo.
+	 */
 
 	public static void escribirFichero(String ruta, List<String> lines) {
 
@@ -2809,6 +3921,14 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Lee un archivo de texto desde la ruta especificada y retorna las líneas
+	 * leídas.
+	 *
+	 * @param ruta Ruta del archivo a leer.
+	 * @return Lista de cadenas que representan las líneas del archivo.
+	 */
 
 	public static List<String> leerArchivo(String ruta) {
 
@@ -2840,6 +3960,14 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Elimina el punto final de la cadena y reemplaza los puntos internos por
+	 * guiones bajos.
+	 *
+	 * @param cadena Cadena en la que se realizarán las modificaciones.
+	 * @return Cadena modificada según las reglas establecidas.
+	 */
+
 	public static String eliminarPuntos(String cadena) {
 
 		String cadena2 = cadena;
@@ -2862,6 +3990,14 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Determina el separador de directorios adecuado según el sistema operativo
+	 * actual.
+	 *
+	 * @return Separador de directorios (por ejemplo, "\\" para Windows, "/" para
+	 *         otros sistemas).
+	 */
+
 	public static String saberSeparador() {
 
 		if (System.getProperty("os.name").contains("indows")) {
@@ -2878,6 +4014,13 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Convierte una cadena en formato UTF-8 a ISO-8859-1.
+	 *
+	 * @param s Cadena en formato UTF-8.
+	 * @return Cadena convertida a ISO-8859-1.
+	 */
+
 	public static String convertToUTF8(String s) {
 
 		String out = "";
@@ -2887,6 +4030,13 @@ public abstract class JMthos {
 		return out;
 
 	}
+
+	/**
+	 * Obtiene el directorio actual del sistema.
+	 *
+	 * @return Ruta del directorio actual del sistema, terminada con el separador de
+	 *         directorios adecuado.
+	 */
 
 	public static String directorioActual() {
 
@@ -2905,6 +4055,16 @@ public abstract class JMthos {
 		return resultado;
 
 	}
+
+	/**
+	 * Lee un número específico de líneas desde un archivo en la ruta relativa
+	 * especificada.
+	 *
+	 * @param rutaRelativa Ruta relativa del archivo a leer.
+	 * @param longitud     Número de líneas que se van a leer desde el archivo.
+	 * @return Arreglo de cadenas con las líneas leídas desde el archivo.
+	 * @throws IOException Si ocurre un error al leer el archivo.
+	 */
 
 	public static String[] leerFicheroArray(String rutaRelativa, int longitud) throws IOException {
 
@@ -2942,14 +4102,10 @@ public abstract class JMthos {
 
 				}
 
-				fE.close();
-
-				flE.close();
-
 			}
 
 			catch (Exception e) {
-				//
+
 			}
 
 			finally {
@@ -2957,11 +4113,13 @@ public abstract class JMthos {
 				if (fE != null) {
 
 					try {
+
 						fE.close();
+
 					}
 
 					catch (IOException e) {
-						//
+
 					}
 
 				}
@@ -2975,11 +4133,13 @@ public abstract class JMthos {
 					}
 
 					catch (IOException e) {
-						//
+
 					}
 
 				}
+
 			}
+
 		}
 
 		else {
@@ -2991,6 +4151,12 @@ public abstract class JMthos {
 		return salida;
 
 	}
+
+	/**
+	 * Reproduce un archivo de sonido especificado por su nombre.
+	 *
+	 * @param nombreSonido Nombre del archivo de sonido a reproducir.
+	 */
 
 	public static void reproducirSonido(String nombreSonido) {
 
@@ -3008,10 +4174,20 @@ public abstract class JMthos {
 		}
 
 		catch (UnsupportedAudioFileException | IOException | LineUnavailableException ex) {
-			//
+
 		}
 
 	}
+
+	/**
+	 * Elimina todos los archivos con una extensión específica en la ruta
+	 * especificada.
+	 *
+	 * @param ruta      Ruta donde se encuentran los archivos a eliminar.
+	 * @param extension Extensión de los archivos a eliminar (por ejemplo, "txt",
+	 *                  "jpg", etc.).
+	 * @throws IOException Si ocurre un error al eliminar los archivos.
+	 */
 
 	public static void eliminarArchivos(String ruta, String extension) throws IOException {
 
@@ -3022,11 +4198,19 @@ public abstract class JMthos {
 			if (!frames.get(i).isEmpty()) {
 
 				eliminarFichero(ruta + saberSeparador() + frames.get(i));
+
 			}
 
 		}
 
 	}
+
+	/**
+	 * Elimina todos los archivos especificados en la lista proporcionada.
+	 *
+	 * @param listaFicheros Lista de rutas de archivos a eliminar.
+	 * @throws IOException Si ocurre un error al eliminar los archivos.
+	 */
 
 	public static void eliminarArchivos(LinkedList<String> listaFicheros) throws IOException {
 
@@ -3042,7 +4226,15 @@ public abstract class JMthos {
 
 	}
 
-	static String readAll(Reader rd) throws IOException {
+	/**
+	 * Lee todo el contenido de un objeto Reader y lo devuelve como una cadena.
+	 *
+	 * @param rd Reader del cual se leerá el contenido.
+	 * @return Cadena que representa todo el contenido leído del Reader.
+	 * @throws IOException Si ocurre un error de lectura.
+	 */
+
+	public static String readAll(Reader rd) throws IOException {
 
 		StringBuilder sb = new StringBuilder();
 
@@ -3057,6 +4249,14 @@ public abstract class JMthos {
 		return sb.toString();
 
 	}
+
+	/**
+	 * Lee un objeto JSON desde una URL y devuelve un objeto JSONObject.
+	 *
+	 * @param url URL desde donde se leerá el JSON.
+	 * @return Objeto JSONObject que representa el JSON leído desde la URL.
+	 * @throws IOException Si ocurre un error al leer desde la URL.
+	 */
 
 	public static JSONObject readJsonFromUrl(String url) throws IOException {
 
@@ -3084,11 +4284,27 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Extrae la carpeta de una ruta de archivo dada.
+	 *
+	 * @param ruta Ruta de archivo de la cual se extraerá la carpeta.
+	 * @return Carpeta extraída de la ruta de archivo.
+	 */
+
 	public static String extraerCarpeta(String ruta) {
 
 		return ruta.substring(0, ruta.lastIndexOf(saberSeparador()) + 1);
 
 	}
+
+	/**
+	 * Elimina un archivo especificado por su ruta.
+	 *
+	 * @param file Ruta del archivo que se eliminará.
+	 * @return Código de respuesta indicando el resultado de la operación (200, 400,
+	 *         404, 501, 502).
+	 * @throws IOException Si ocurre un error al intentar eliminar el archivo.
+	 */
 
 	public static int eliminarArchivo(String file) throws IOException {
 
@@ -3136,6 +4352,15 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Crea un nuevo archivo con el contenido especificado.
+	 *
+	 * @param filePath Ruta del archivo que se creará.
+	 * @param texto    Contenido que se escribirá en el archivo.
+	 * @return Código de respuesta indicando el resultado de la operación (200, 400,
+	 *         500).
+	 */
+
 	public static int crearFichero(String filePath, String texto) {
 
 		int respuesta = 400;
@@ -3168,6 +4393,13 @@ public abstract class JMthos {
 
 	}
 
+	/**
+	 * Elimina todos los archivos en una carpeta especificada.
+	 *
+	 * @param ruta Ruta de la carpeta que se desea vaciar.
+	 * @throws IOException Si ocurre un error al intentar eliminar los archivos.
+	 */
+
 	public static void vaciarCarpeta(String ruta) throws IOException {
 
 		LinkedList<String> frames = (LinkedList<String>) listar(ruta, ".", false, true);
@@ -3183,6 +4415,13 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Realiza un ping a una URL especificada para verificar su disponibilidad.
+	 *
+	 * @param url URL a la cual se realizará el ping.
+	 * @return true si la URL está disponible, false si no lo está.
+	 */
 
 	public static boolean pingURL(String url) {
 
@@ -3223,6 +4462,13 @@ public abstract class JMthos {
 		}
 
 	}
+
+	/**
+	 * Renombra un archivo especificado añadiéndole una nueva extensión.
+	 *
+	 * @param archivo   Ruta del archivo que se desea renombrar.
+	 * @param extension Nueva extensión que se añadirá al archivo.
+	 */
 
 	public static void renombrarArchivo(String archivo, String extension) {
 
