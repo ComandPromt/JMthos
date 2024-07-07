@@ -54,6 +54,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -74,9 +75,12 @@ import javax.swing.DefaultListCellRenderer;
 import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
+import javax.swing.SwingUtilities;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
@@ -88,13 +92,436 @@ import org.json.JSONObject;
 
 import io.github.biezhi.webp.WebpIO;
 
-public abstract class JMthos {
+public class JMthos {
 
 	private static final String URL_REGEX = "^(https?|ftp)://[a-zA-Z0-9\\-\\.]+(:[a-zA-Z0-9]*)?/?([a-zA-Z0-9\\-\\._\\?,'/\\+&%\\$#=~])*$";
 
 	private static final Pattern URL_PATTERN = Pattern.compile(URL_REGEX);
 
 	public static final String OS = System.getProperty("os.name");
+
+	/**
+	 * Genera una lista de números con ceros a la izquierda hasta el número
+	 * especificado.
+	 *
+	 * @param number el número hasta el cual se generarán los números con ceros a la
+	 *               izquierda
+	 * @return una lista de cadenas de números con ceros a la izquierda
+	 */
+
+	public static ArrayList<String> pintarCeros(int number) {
+
+		ArrayList<String> lista = new ArrayList<>();
+
+		int zeros = Integer.toString(number).length();
+
+		for (int i = 1; i <= number; i++) {
+
+			lista.add(String.format("%0" + (zeros + 1) + "d", i));
+
+		}
+
+		return lista;
+
+	}
+
+	/**
+	 * Ordena una lista de nombres de archivo de forma ascendente basada en el
+	 * número en el nombre del archivo. Los nombres con números precedidos por ceros
+	 * y con menos ceros a la izquierda aparecen primero, seguidos por aquellos sin
+	 * ceros precedentes.
+	 *
+	 * @param fileNames la lista de nombres de archivo a ordenar
+	 */
+	public static void sortFileNames(List<String> fileNames) {
+
+		Collections.sort(fileNames, new Comparator<String>() {
+
+			@Override
+
+			public int compare(String o1, String o2) {
+
+				String numStr1 = extractNumber(o1);
+
+				String numStr2 = extractNumber(o2);
+
+				int zeros1 = countLeadingZeros(numStr1);
+
+				int zeros2 = countLeadingZeros(numStr2);
+
+				if (zeros1 == 0 && zeros2 > 0) {
+
+					return 1;
+
+				}
+
+				else if (zeros1 > 0 && zeros2 == 0) {
+
+					return -1;
+
+				}
+
+				if (zeros1 != zeros2) {
+
+					return Integer.compare(zeros1, zeros2);
+
+				}
+
+				return Integer.compare(Integer.parseInt(numStr1), Integer.parseInt(numStr2));
+
+			}
+
+			/**
+			 * Extrae la parte numérica del nombre del archivo.
+			 *
+			 * @param fileName el nombre del archivo del que extraer el número
+			 * @return la parte numérica extraída del nombre del archivo
+			 */
+			private String extractNumber(String fileName) {
+
+				int start = fileName.lastIndexOf('_') + 1;
+
+				int end = fileName.lastIndexOf('.');
+
+				return fileName.substring(start, end);
+
+			}
+
+			/**
+			 * Cuenta los ceros a la izquierda en una cadena numérica.
+			 *
+			 * @param str la cadena de la que se contarán los ceros a la izquierda
+			 * @return la cantidad de ceros a la izquierda
+			 */
+			private int countLeadingZeros(String str) {
+
+				int count = 0;
+
+				for (int i = 0; i < str.length(); i++) {
+
+					if (str.charAt(i) == '0') {
+
+						count++;
+
+					}
+
+					else {
+
+						break;
+
+					}
+
+				}
+
+				return count;
+
+			}
+
+		});
+
+	}
+
+	/**
+	 * Genera una tabla HTML a partir de listas de valores de encabezado y de
+	 * columna.
+	 *
+	 * @param valoresEncabezado una lista de cadenas que representan los valores de
+	 *                          los encabezados de la tabla
+	 * @param valoresColumna    una lista de cadenas que representan los valores de
+	 *                          las celdas de la tabla
+	 * @param rowspanValue      el valor de rowspan para las celdas de la tabla
+	 *                          (debe ser mayor que 1 para aplicarse)
+	 * @param colspanValue      el valor de colspan para las celdas de la tabla
+	 *                          (debe ser mayor que 1 para aplicarse)
+	 * @return una cadena que contiene la representación HTML de la tabla generada
+	 */
+
+	public static String generarTablaHtml(List<String> valoresEncabezado, List<String> valoresColumna, int rowspanValue,
+			int colspanValue) {
+
+		StringBuilder html = new StringBuilder();
+
+		html.append("<table>\n");
+
+		if (valoresEncabezado != null && !valoresEncabezado.isEmpty()) {
+
+			html.append("<thead>\n");
+
+			html.append("<tr>\n");
+
+			for (String valor : valoresEncabezado) {
+
+				html.append("<th>").append(valor).append("</th>\n");
+
+			}
+
+			html.append("</tr>\n");
+
+			html.append("</thead>\n");
+
+		}
+
+		html.append("<tbody>\n");
+
+		int numFilas = valoresColumna.size() / valoresEncabezado.size();
+
+		for (int i = 0; i < numFilas; i++) {
+
+			html.append("<tr>\n");
+
+			for (int j = 0; j < valoresEncabezado.size(); j++) {
+
+				int index = i * valoresEncabezado.size() + j;
+
+				if (index < valoresColumna.size()) {
+
+					html.append("<td");
+
+					if (rowspanValue > 1) {
+
+						html.append(" rowspan=\"").append(rowspanValue).append("\"");
+
+					}
+
+					if (colspanValue > 1) {
+
+						html.append(" colspan=\"").append(colspanValue).append("\"");
+
+					}
+
+					html.append(">");
+
+					html.append(valoresColumna.get(index));
+
+					html.append("</td>\n");
+
+				}
+
+			}
+
+			html.append("</tr>\n");
+
+		}
+
+		html.append("</tbody>\n");
+
+		html.append("</table>\n");
+
+		return html.toString();
+
+	}
+
+	/**
+	 * Calcula el porcentaje de una cantidad dada.
+	 *
+	 * @param total      la cantidad total
+	 * @param percentage el porcentaje a calcular
+	 * @return el valor del porcentaje de la cantidad total
+	 * @throws IllegalArgumentException si el porcentaje es negativo o la cantidad
+	 *                                  total es negativa
+	 */
+
+	public static double calculatePercentage(double total, double percentage) {
+
+		if (total < 0 || percentage < 0) {
+
+			throw new IllegalArgumentException("La cantidad total y el porcentaje deben ser valores no negativos.");
+
+		}
+
+		return (total * percentage) / 100;
+
+	}
+
+	/**
+	 * Ajusta una cantidad en un porcentaje dado, ya sea aumentando o disminuyendo.
+	 *
+	 * @param total      la cantidad total
+	 * @param percentage el porcentaje para ajustar la cantidad
+	 * @param increase   true para aumentar la cantidad, false para disminuirla
+	 * @return la cantidad ajustada en el porcentaje dado
+	 * @throws IllegalArgumentException si el porcentaje es negativo o la cantidad
+	 *                                  total es negativa
+	 */
+
+	public static double adjustByPercentage(double total, double percentage, boolean increase) {
+
+		if (total < 0 || percentage < 0) {
+
+			throw new IllegalArgumentException("La cantidad total y el porcentaje deben ser valores no negativos.");
+
+		}
+
+		double adjustment = calculatePercentage(total, percentage);
+
+		return increase ? total + adjustment : total - adjustment;
+
+	}
+
+	/**
+	 * Convierte un ArrayList a una List.
+	 *
+	 * @param <T>       el tipo de elementos en la lista
+	 * @param arrayList el ArrayList que se va a convertir
+	 * @return una List que contiene los elementos del ArrayList proporcionado
+	 */
+
+	public static <T> List<T> convertArrayListToList(ArrayList<T> arrayList) {
+
+		return new ArrayList<>(arrayList);
+
+	}
+
+	/**
+	 * Convierte un LinkedList a una List.
+	 *
+	 * @param <T>        el tipo de elementos en la lista
+	 * @param linkedList el LinkedList que se va a convertir
+	 * @return una List que contiene los elementos del LinkedList proporcionado
+	 */
+
+	public static <T> List<T> convertLinkedListToList(LinkedList<T> linkedList) {
+
+		return new LinkedList<>(linkedList);
+
+	}
+
+	/**
+	 * Muestra un diálogo modal con el título y los componentes especificados.
+	 *
+	 * @param tthis el componente padre del diálogo
+	 * @param title el título del diálogo
+	 * @param lista la lista de componentes que se añadirán al diálogo
+	 */
+
+	public static void showNewDialog(JComponent tthis, String title, List<JComponent> lista) {
+
+		JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(tthis);
+
+		JDialog dialog = new JDialog(parentFrame, title, true);
+
+		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+		for (JComponent valor : lista) {
+
+			dialog.getContentPane().add(valor);
+
+		}
+
+		dialog.setSize(300, 200);
+
+		dialog.setLocationRelativeTo(parentFrame);
+
+		dialog.setVisible(true);
+
+	}
+
+	/**
+	 * Muestra un diálogo modal con el título, tamaño y componentes especificados.
+	 *
+	 * @param tthis  el componente padre del diálogo
+	 * @param width  el ancho del diálogo
+	 * @param height la altura del diálogo
+	 * @param title  el título del diálogo
+	 * @param lista  la lista de componentes que se añadirán al diálogo
+	 */
+
+	public static void showNewDialog(JComponent tthis, int width, int height, String title, List<JComponent> lista) {
+
+		JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(tthis);
+
+		JDialog dialog = new JDialog(parentFrame, title, true);
+
+		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+
+		for (JComponent valor : lista) {
+
+			dialog.getContentPane().add(valor);
+
+		}
+
+		dialog.setSize(width, height);
+
+		dialog.setLocationRelativeTo(parentFrame);
+
+		dialog.setVisible(true);
+
+	}
+
+	/**
+	 * Convierte un mapa ordenado en una lista de cadenas.
+	 *
+	 * @param map Mapa ordenado a convertir en una lista.
+	 * @return Lista de cadenas obtenidas del mapa ordenado.
+	 */
+
+	public static List<String> sortedMapToList(Map<Integer, String> map) {
+
+		List<String> list = new ArrayList<>();
+
+		for (Map.Entry<Integer, String> entry : map.entrySet()) {
+
+			list.add(entry.getValue());
+
+		}
+
+		return list;
+
+	}
+
+	/**
+	 * Convierte una lista de cadenas en la forma "a b" a una lista de números
+	 * individuales como cadenas.
+	 *
+	 * @param lista     Lista de cadenas en la forma "a b".
+	 * @param separador Separador utilizado para dividir las cadenas en números
+	 *                  individuales.
+	 * @return Lista de números individuales como cadenas.
+	 */
+
+	public static List<String> limpiarLista(List<String> lista, String separador) {
+
+		if (separador == null) {
+
+			separador = " ";
+
+		}
+
+		List<String> result = new ArrayList<>();
+
+		for (String str : lista) {
+
+			String[] numbers = str.split(separador);
+
+			for (String num : numbers) {
+
+				result.add(num);
+
+			}
+
+		}
+
+		return result;
+
+	}
+
+	/**
+	 * Convierte una lista de cadenas en un mapa donde las claves son índices
+	 * incrementales y los valores son cadenas agrupadas según el tamaño de división
+	 * especificado.
+	 *
+	 * @param lista Lista de cadenas para convertir en mapa.
+	 * @param split Tamaño de división para agrupar cadenas en cada valor del mapa.
+	 * @return Mapa donde las claves son índices y los valores son cadenas
+	 *         agrupadas.
+	 */
+
+	public Map<Integer, String> convertirAMapYOrdenar(List<String> lista, int split, int sortByIndex,
+			boolean ascendingSorted) {
+
+		return ordenarMap(convertListToMap(lista, split), sortByIndex, ascendingSorted);
+
+	}
 
 	/**
 	 * Método que realiza una regla de tres compuesta para resolver una proporción
@@ -121,6 +548,30 @@ public abstract class JMthos {
 	}
 
 	/**
+	 * Método que realiza una regla de tres compuesta para resolver una proporción
+	 * entre tres términos.
+	 *
+	 * @param valor1           Primer valor conocido.
+	 * @param valor2           Segundo valor conocido.
+	 * @param valor3           Tercer valor conocido.
+	 * @param valorDesconocido Valor desconocido que se desea encontrar.
+	 * @return El valor desconocido calculado mediante la regla de tres compuesta.
+	 * @throws IllegalArgumentException Si alguno de los valores conocidos es cero.
+	 */
+
+	public static double reglaDeTresCompuesta(int valor1, int valor2, int valor3, int valorDesconocido) {
+
+		if (valor1 == 0 || valor2 == 0 || valor3 == 0) {
+
+			throw new IllegalArgumentException("Los valores conocidos no pueden ser cero.");
+
+		}
+
+		return (valor3 * valor2 * valorDesconocido) / (valor1 * valor2);
+
+	}
+
+	/**
 	 * Método que realiza una regla de tres simple para resolver una proporción.
 	 *
 	 * @param valor1           Primer valor conocido.
@@ -130,6 +581,21 @@ public abstract class JMthos {
 	 */
 
 	public static double reglaDeTres(double valor1, double valor2, double valorDesconocido) {
+
+		return (valor2 * valorDesconocido) / valor1;
+
+	}
+
+	/**
+	 * Método que realiza una regla de tres simple para resolver una proporción.
+	 *
+	 * @param valor1           Primer valor conocido.
+	 * @param valor2           Segundo valor conocido.
+	 * @param valorDesconocido Valor desconocido que se desea encontrar.
+	 * @return El valor desconocido calculado mediante la regla de tres.
+	 */
+
+	public static double reglaDeTres(int valor1, int valor2, int valorDesconocido) {
 
 		return (valor2 * valorDesconocido) / valor1;
 
@@ -190,7 +656,7 @@ public abstract class JMthos {
 	 * @return Mapa ordenado por los valores según el índice especificado.
 	 */
 
-	public static Map<Integer, String> ordenarMap(Map<Integer, String> map, int sortByIndex) {
+	public static Map<Integer, String> ordenarMap(Map<Integer, String> map, int sortByIndex, boolean ascendingSorted) {
 
 		List<Map.Entry<Integer, String>> entryList = new ArrayList<>(map.entrySet());
 
@@ -200,9 +666,11 @@ public abstract class JMthos {
 
 			String[] values2 = e2.getValue().split(" ");
 
-			int indexToSortBy = (sortByIndex == 2) ? 1 : 0; // Determinar el índice para ordenar
+			int indexToSortBy = (sortByIndex == 2) ? 1 : 0;
 
-			return values1[indexToSortBy].compareTo(values2[indexToSortBy]);
+			int comparisonResult = values1[indexToSortBy].compareTo(values2[indexToSortBy]);
+
+			return ascendingSorted ? comparisonResult : -comparisonResult;
 
 		});
 
@@ -532,6 +1000,20 @@ public abstract class JMthos {
 		result = matcher.replaceAll("");
 
 		return result;
+
+	}
+
+	/**
+	 * Calcula la potencia de un número base elevado a un exponente dado.
+	 *
+	 * @param base      el número base.
+	 * @param exponente el exponente al cual se eleva la base.
+	 * @return el resultado de base elevado a exponente.
+	 */
+
+	public static double potencia(double base, double exponente) {
+
+		return Math.pow(base, exponente);
 
 	}
 
@@ -958,126 +1440,96 @@ public abstract class JMthos {
 	}
 
 	/**
-	 * Calcula el valor de la sucesión geométrica para un índice dado a partir de un
-	 * parámetro de texto.
-	 * 
-	 * @param parametro Una cadena de texto que contiene pares de índice y valor en
-	 *                  el formato "1#2,2#4,3#8,4#16". El formato debe ser
-	 *                  exactamente como se describe, con pares separados por comas
-	 *                  y los índices y valores separados por el símbolo '#'.
-	 * @param n         El índice para el cual se desea calcular el valor de la
-	 *                  sucesión geométrica. Debe ser un entero positivo.
-	 * @return El valor de la sucesión geométrica en el índice dado. Si hay un error
-	 *         en el formato del parámetro o en el valor de n, se retorna null.
+	 * Calcula el valor de la sucesión geométrica para un índice dado.
+	 *
+	 * @param parametro una cadena que contiene el primer valor seguido de '#' y el
+	 *                  segundo valor de la sucesión geométrica.
+	 * @param n         el índice del término que se desea calcular en la sucesión
+	 *                  geométrica.
+	 * @return el valor correspondiente al índice n en la sucesión geométrica.
 	 */
 
-	public static Integer crearSucesionGeometrica(String parametro, int n) {
+	public static double calcularSucesionGeometrica(String parametro, int n) {
 
-		Integer resultado = null;
+		double primerValor = Double.parseDouble(parametro.substring(0, parametro.indexOf("#")));
 
-		if (parametro == null || parametro.isEmpty()) {
+		double razon =
 
-			System.err.println("El parámetro no puede ser nulo o vacío.");
+				Double.parseDouble(parametro.substring(parametro.indexOf("#") + 1, parametro.length())) / primerValor;
 
-		}
-
-		else if (n <= 0) {
-
-			System.err.println("El índice n debe ser un entero positivo.");
-
-		}
-
-		else {
-
-			String[] pares = parametro.split(",");
-
-			int[] indices = new int[pares.length];
-
-			int[] valores = new int[pares.length];
-
-			boolean formatoIncorrecto = false;
-
-			for (int i = 0; i < pares.length && !formatoIncorrecto; i++) {
-
-				String[] partes = pares[i].split("#");
-
-				if (partes.length != 2) {
-
-					System.err.println("El formato del parámetro es incorrecto en: " + pares[i]);
-
-					formatoIncorrecto = true;
-
-				}
-
-				else {
-
-					try {
-
-						indices[i] = Integer.parseInt(partes[0]);
-
-						valores[i] = Integer.parseInt(partes[1]);
-
-					}
-
-					catch (NumberFormatException e) {
-
-						System.err.println("El formato de número es incorrecto en: " + pares[i]);
-
-						formatoIncorrecto = true;
-
-					}
-
-				}
-
-			}
-
-			if (!formatoIncorrecto && indices.length >= 2) {
-
-				double razon = (double) valores[1] / valores[0];
-
-				resultado = (int) (valores[0] * Math.pow(razon, n - 1));
-
-			}
-
-			else if (indices.length < 2) {
-
-				System.err.println("Se requieren al menos dos pares de valores para calcular la fórmula.");
-
-			}
-
-		}
-
-		return resultado;
+		return primerValor * Math.pow(razon, n - 1);
 
 	}
 
 	/**
-	 * Calcula el valor de la sucesión aritmética para un índice dado a partir de un
-	 * parámetro de texto.
-	 * 
-	 * @param parametro Una cadena de texto que contiene pares de índice y valor en
-	 *                  el formato "1#2,2#4,3#8,4#16". El formato debe ser
-	 *                  exactamente como se describe, con pares separados por comas
-	 *                  y los índices y valores separados por el símbolo '#'.
-	 * @param n         El índice para el cual se desea calcular el valor de la
-	 *                  sucesión geométrica. Debe ser un entero positivo.
-	 * @return El valor de la sucesión geométrica en el índice dado. Si hay un error
-	 *         en el formato del parámetro o en el valor de n, se retorna null.
+	 * Calcula el valor específico en una sucesión geométrica para un índice dado.
+	 *
+	 * @param parametro una cadena que contiene el primer valor seguido de '#' y el
+	 *                  segundo valor de la sucesión geométrica.
+	 * @param n         el índice del término que se desea calcular en la sucesión
+	 *                  geométrica.
+	 * @return el valor correspondiente al índice n en la sucesión geométrica.
 	 */
 
-	public static Integer calcularSucesionAritmetica(String parametro, int n) {
+	public static double calcularValorEnSucesionGeometrica(String parametro, int n) {
 
-		Integer resultado = null;
+		return n * (Double.parseDouble(parametro.substring(parametro.indexOf("#") + 1, parametro.length()))
+				/ (Double.parseDouble(parametro.substring(0, parametro.indexOf("#")))));
+
+	}
+
+	public static int calcularSucesionAritmeticaAInt(String parametro, int n, boolean round) {
+
+		return convertirDoubleAInt(calcularSucesionAritmeticaADouble(parametro, n));
+
+	}
+
+	/**
+	 * Calcula la sucesión aritmética y devuelve el resultado como un entero
+	 * redondeado.
+	 *
+	 * @param parametro Una cadena que contiene pares de índices y valores separados
+	 *                  por comas, donde cada par está en el formato "indice#valor".
+	 * @param n         El índice para el cual se desea calcular el valor de la
+	 *                  sucesión aritmética.
+	 * @return El valor calculado de la sucesión aritmética en el índice n,
+	 *         redondeado al entero más cercano.
+	 * @throws IllegalArgumentException Si el parámetro es nulo o vacío, o si el
+	 *                                  índice n no es un entero positivo.
+	 */
+
+	public static int calcularSucesionAritmeticaAInt(String parametro, int n) {
+
+		return (int) Math.round(calcularSucesionAritmeticaADouble(parametro, n));
+
+	}
+
+	/**
+	 * Calcula la sucesión aritmética y devuelve el resultado como un número de tipo
+	 * Double.
+	 *
+	 * @param parametro Una cadena que contiene pares de índices y valores separados
+	 *                  por comas, donde cada par está en el formato "indice#valor".
+	 * @param n         El índice para el cual se desea calcular el valor de la
+	 *                  sucesión aritmética.
+	 * @return El valor calculado de la sucesión aritmética en el índice n.
+	 * @throws IllegalArgumentException Si el parámetro es nulo o vacío, o si el
+	 *                                  índice n no es un entero positivo.
+	 */
+
+	public static Double calcularSucesionAritmeticaADouble(String parametro, int n) {
+
+		Double resultado = null;
 
 		if (parametro == null || parametro.isEmpty()) {
 
-			System.err.println("El parámetro no puede ser nulo o vacío.");
+			throw new IllegalArgumentException("El parámetro no puede ser nulo o vacío.");
 
 		}
 
 		else if (n <= 0) {
 
-			System.err.println("El índice n debe ser un entero positivo.");
+			throw new IllegalArgumentException("El índice n debe ser un entero positivo.");
 
 		}
 
@@ -1091,13 +1543,13 @@ public abstract class JMthos {
 
 			boolean formatoIncorrecto = false;
 
+			String[] partes;
+
 			for (int i = 0; i < pares.length && !formatoIncorrecto; i++) {
 
-				String[] partes = pares[i].split("#");
+				partes = pares[i].split("#");
 
 				if (partes.length != 2) {
-
-					System.err.println("El formato del parámetro es incorrecto en: " + pares[i]);
 
 					formatoIncorrecto = true;
 
@@ -1115,8 +1567,6 @@ public abstract class JMthos {
 
 					catch (NumberFormatException e) {
 
-						System.err.println("El formato de número es incorrecto en: " + pares[i]);
-
 						formatoIncorrecto = true;
 
 					}
@@ -1125,17 +1575,45 @@ public abstract class JMthos {
 
 			}
 
-			if (!formatoIncorrecto && indices.length >= 2) {
+			if (!formatoIncorrecto) {
 
-				int constante = (valores[1] - valores[0]) / (indices[1] - indices[0]);
+				for (int i = 0; i < indices.length; i++) {
 
-				resultado = constante * (n - 1);
+					if (indices[i] == n) {
 
-			}
+						resultado = (double) valores[i];
 
-			else if (indices.length < 2) {
+						return resultado;
 
-				System.err.println("Se requieren al menos dos pares de valores para calcular la fórmula.");
+					}
+
+				}
+
+				if (indices.length >= 2) {
+
+					int indiceBase = indices[0];
+
+					int valorBase = valores[0];
+
+					double sumaDiferencias = 0;
+
+					for (int i = 1; i < indices.length; i++) {
+
+						sumaDiferencias += (double) (valores[i] - valores[i - 1]) / (indices[i] - indices[i - 1]);
+
+					}
+
+					double razon = sumaDiferencias / (indices.length - 1);
+
+					resultado = valorBase + (n - indiceBase) * razon;
+
+				}
+
+				else {
+
+					System.err.println("Se requieren al menos dos pares de valores para calcular la fórmula.");
+
+				}
 
 			}
 
@@ -1915,6 +2393,25 @@ public abstract class JMthos {
 	}
 
 	/**
+	 * Convierte un valor de tipo Double a int.
+	 *
+	 * @param valorDouble el valor Double que se desea convertir a int.
+	 * @return el valor convertido a int.
+	 * @throws IllegalArgumentException si el valorDouble es null.
+	 */
+	public static int convertirDoubleAInt(Double valorDouble) {
+
+		if (valorDouble == null) {
+
+			throw new IllegalArgumentException("El valor Double no puede ser nulo.");
+
+		}
+
+		return valorDouble.intValue();
+
+	}
+
+	/**
 	 * Agrega un separador al final de la cadena si no existe ya.
 	 *
 	 * @param texto Cadena a la que se agregará el separador.
@@ -1960,10 +2457,6 @@ public abstract class JMthos {
 		}
 
 		return longestString;
-
-	}
-
-	private JMthos() {
 
 	}
 
