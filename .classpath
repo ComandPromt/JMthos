@@ -39,5 +39,6 @@
 	<classpathentry kind="lib" path="src/main/java/libs/org.json_1.0.0.v201011060100.jar"/>
 	<classpathentry kind="lib" path="src/main/java/libs/webp-io.jar"/>
 	<classpathentry kind="lib" path="src/main/java/libs/commons-io-2.8.0.jar"/>
+	<classpathentry kind="lib" path="src/main/java/libs/exp4j-0.4.8.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

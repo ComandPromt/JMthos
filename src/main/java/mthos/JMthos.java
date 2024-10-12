@@ -1,7 +1,9 @@
 package mthos;
 
+import java.awt.AWTException;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.GraphicsConfiguration;
@@ -9,11 +11,14 @@ import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.Image;
 import java.awt.Point;
+import java.awt.Polygon;
 import java.awt.RenderingHints;
+import java.awt.Robot;
 import java.awt.Toolkit;
 import java.awt.Transparency;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
@@ -31,6 +36,8 @@ import java.io.Reader;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
@@ -44,6 +51,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.text.NumberFormat;
@@ -81,6 +89,7 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
+import javax.swing.WindowConstants;
 import javax.swing.text.DefaultStyledDocument;
 import javax.swing.text.Style;
 import javax.swing.text.StyleConstants;
@@ -88,9 +97,11 @@ import javax.swing.text.StyleContext;
 import javax.swing.text.StyledDocument;
 
 import org.apache.commons.io.FileUtils;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import io.github.biezhi.webp.WebpIO;
+import net.objecthunter.exp4j.ExpressionBuilder;
 
 public class JMthos {
 
@@ -99,6 +110,1164 @@ public class JMthos {
 	private static final Pattern URL_PATTERN = Pattern.compile(URL_REGEX);
 
 	public static final String OS = System.getProperty("os.name");
+
+	private static final String WINDOWS_PATH_REGEX = "^[a-zA-Z]:\\\\(?:[^\\\\/:*?\"<>|\\r\\n]+\\\\)*[^\\\\/:*?\"<>|\\r\\n]*$";
+
+	private static final String LINUX_PATH_REGEX = "^(/[^/ ]*)+/?$";
+
+	/**
+	 * Simula la pulsación de la tecla "Control" junto con otra tecla especificada
+	 * usando una instancia de {@link Robot}.
+	 * 
+	 * @param robot el objeto {@link Robot} utilizado para realizar las acciones de
+	 *              pulsación de teclas
+	 * @param key   el carácter que representa la tecla que se debe presionar junto
+	 *              con la tecla "Control"
+	 * @throws AWTException si la configuración de la plataforma no permite el
+	 *                      control de entrada de bajo nivel
+	 */
+
+	public void controlMas(Robot robot, char key) throws AWTException {
+
+		try {
+
+			int keyCode = getKeyCodeForChar(key);
+
+			if (keyCode == -1) {
+
+				return;
+			}
+
+			robot.keyPress(KeyEvent.VK_CONTROL);
+
+			robot.keyPress(keyCode);
+
+			robot.keyRelease(keyCode);
+
+			robot.keyRelease(KeyEvent.VK_CONTROL);
+
+		}
+
+		catch (Exception e) {
+			e.printStackTrace();
+		}
+
+	}
+
+	/**
+	 * Devuelve el código de tecla para el carácter dado. Si el carácter no es
+	 * válido, devuelve -1.
+	 * 
+	 * @param key el carácter para el que se solicita el código de tecla
+	 * @return el código de tecla de {@link KeyEvent} correspondiente al carácter, o
+	 *         -1 si no es válido
+	 */
+
+	public static int getKeyCodeForChar(char key) {
+
+		switch (Character.toLowerCase(key)) {
+
+		case 'a':
+
+			return KeyEvent.VK_A;
+
+		case 'b':
+
+			return KeyEvent.VK_B;
+
+		case 'c':
+
+			return KeyEvent.VK_C;
+
+		case 'd':
+
+			return KeyEvent.VK_D;
+
+		case 'e':
+
+			return KeyEvent.VK_E;
+
+		case 'f':
+
+			return KeyEvent.VK_F;
+
+		case 'g':
+
+			return KeyEvent.VK_G;
+
+		case 'h':
+
+			return KeyEvent.VK_H;
+
+		case 'i':
+
+			return KeyEvent.VK_I;
+
+		case 'j':
+
+			return KeyEvent.VK_J;
+
+		case 'k':
+
+			return KeyEvent.VK_K;
+
+		case 'l':
+
+			return KeyEvent.VK_L;
+
+		case 'm':
+
+			return KeyEvent.VK_M;
+
+		case 'n':
+
+			return KeyEvent.VK_N;
+
+		case 'o':
+
+			return KeyEvent.VK_O;
+
+		case 'p':
+
+			return KeyEvent.VK_P;
+
+		case 'q':
+
+			return KeyEvent.VK_Q;
+
+		case 'r':
+
+			return KeyEvent.VK_R;
+
+		case 's':
+
+			return KeyEvent.VK_S;
+
+		case 't':
+
+			return KeyEvent.VK_T;
+
+		case 'u':
+
+			return KeyEvent.VK_U;
+
+		case 'v':
+
+			return KeyEvent.VK_V;
+
+		case 'w':
+
+			return KeyEvent.VK_W;
+
+		case 'x':
+
+			return KeyEvent.VK_X;
+
+		case 'y':
+
+			return KeyEvent.VK_Y;
+
+		case 'z':
+
+			return KeyEvent.VK_Z;
+
+		case '0':
+
+			return KeyEvent.VK_0;
+
+		case '1':
+
+			return KeyEvent.VK_1;
+
+		case '2':
+
+			return KeyEvent.VK_2;
+
+		case '3':
+
+			return KeyEvent.VK_3;
+
+		case '4':
+
+			return KeyEvent.VK_4;
+
+		case '5':
+
+			return KeyEvent.VK_5;
+
+		case '6':
+
+			return KeyEvent.VK_6;
+
+		case '7':
+
+			return KeyEvent.VK_7;
+
+		case '8':
+
+			return KeyEvent.VK_8;
+
+		case '9':
+
+			return KeyEvent.VK_9;
+
+		default:
+
+			return -1;
+
+		}
+
+	}
+
+	/**
+	 * Ajusta las coordenadas dadas para tener en cuenta la escala de la pantalla.
+	 * Útil cuando se aplican configuraciones de escala en la pantalla.
+	 * 
+	 * @param x la coordenada x a ajustar
+	 * @param y la coordenada y a ajustar
+	 * @return un objeto {@link Point} que contiene las coordenadas ajustadas
+	 */
+
+	public static Point adjustForScale(int x, int y) {
+
+		Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();
+
+		GraphicsDevice gd = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice();
+
+		int screenWidth = gd.getDisplayMode().getWidth();
+
+		int screenHeight = gd.getDisplayMode().getHeight();
+
+		double scaleFactorX = screenWidth / screenSize.getWidth();
+
+		double scaleFactorY = screenHeight / screenSize.getHeight();
+
+		int adjustedX = (int) (x / scaleFactorX);
+
+		int adjustedY = (int) (y / scaleFactorY);
+
+		return new Point(adjustedX, adjustedY);
+
+	}
+
+	/**
+	 * Simula un clic izquierdo del ratón utilizando una instancia de {@link Robot}.
+	 * 
+	 * @param robot el objeto {@link Robot} utilizado para realizar la acción de
+	 *              clic
+	 */
+
+	public static void hacerClick(Robot robot) {
+
+		robot.mousePress(InputEvent.BUTTON1_DOWN_MASK);
+
+		robot.mouseRelease(InputEvent.BUTTON1_DOWN_MASK);
+
+	}
+
+	/**
+	 * Cambia la extensión de todos los archivos en un directorio que no tienen
+	 * extensión.
+	 *
+	 * @param path       La ruta del directorio donde se encuentran los archivos.
+	 * @param outputPath La ruta del directorio donde se guardarán los archivos
+	 *                   renombrados.
+	 * @param extension  La extensión que se agregará a los archivos que no tienen
+	 *                   extensión. No debe incluir el punto.
+	 */
+
+	public static void cambiarExtensionAArchivosSinExtension(String path, String outputPath, String extension) {
+
+		List<String> archivos = listar(path, "all", false, true);
+
+		outputPath = ponerSeparador(outputPath);
+
+		extension = extension.replace(".", "");
+
+		for (String archivo : archivos) {
+
+			if (saberExtension(archivo).equals("")) {
+
+				new File(archivo).renameTo(new File(
+						outputPath + archivo.substring(archivo.lastIndexOf(saberSeparador()) + 1) + "." + extension));
+
+			}
+
+		}
+
+	}
+
+	/**
+	 * Renombra todos los archivos en un directorio a números secuenciales,
+	 * comenzando desde un número dado.
+	 *
+	 * @param path       La ruta del directorio donde se encuentran los archivos.
+	 * @param outputPath La ruta del directorio donde se guardarán los archivos
+	 *                   renombrados.
+	 * @param start      El número inicial desde el cual se comenzará a renombrar
+	 *                   los archivos.
+	 */
+
+	public static void renombrarArchivosANumeros(String path, String outputPath, int start) {
+
+		crearCarpeta(outputPath);
+
+		List<String> archivos = listar(path, "all", false, true);
+
+		if (start < 0) {
+
+			start = 1;
+
+		}
+
+		int contador = start;
+
+		outputPath = ponerSeparador(outputPath);
+
+		for (String archivo : archivos) {
+
+			try {
+
+				new File(archivo).renameTo(new File(outputPath + contador + "." + saberExtension(archivo)));
+
+			}
+
+			catch (Exception e) {
+
+			}
+
+			contador++;
+
+		}
+
+	}
+
+	/**
+	 * Ejecuta una sentencia SQL en una base de datos SQLite.
+	 *
+	 * @param db  la ruta del archivo de la base de datos SQLite.
+	 * @param sql la sentencia SQL que se desea ejecutar.
+	 *
+	 *            Este método establece una conexión a la base de datos SQLite
+	 *            especificada, crea una sentencia y ejecuta la sentencia SQL
+	 *            proporcionada. Maneja las excepciones SQL y garantiza que la
+	 *            conexión a la base de datos se cierre correctamente.
+	 *
+	 * @throws ClassNotFoundException si no se encuentra el controlador JDBC de
+	 *                                SQLite.
+	 * @throws SQLException           si ocurre un error al ejecutar la sentencia
+	 *                                SQL.
+	 */
+
+	public static void runSqlite(String db, String sql) {
+
+		try {
+
+			Class.forName("org.sqlite.JDBC");
+
+			try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db);
+					Statement stmt = conn.createStatement()) {
+
+				stmt.executeUpdate(sql);
+
+			}
+
+			catch (SQLException e) {
+
+			}
+
+		}
+
+		catch (ClassNotFoundException e) {
+
+		}
+
+	}
+
+	/**
+	 * Elimina todos los registros de una tabla especificada en una base de datos
+	 * SQLite.
+	 *
+	 * @param db    La ruta del archivo de la base de datos SQLite.
+	 * @param table El nombre de la tabla de la cual se eliminarán todos los
+	 *              registros.
+	 */
+
+	public static void deleteAllFromTableSqlite(String db, String table) {
+
+		try {
+
+			Class.forName("org.sqlite.JDBC");
+
+			try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db);
+
+					Statement stmt = conn.createStatement()) {
+
+				String sql = "DELETE FROM " + table;
+
+				stmt.executeUpdate(sql);
+
+			}
+
+			catch (SQLException e) {
+
+				e.printStackTrace();
+
+			}
+
+		}
+
+		catch (ClassNotFoundException e) {
+
+			e.printStackTrace();
+
+		}
+
+	}
+
+	/**
+	 * Convierte una instancia de Color a un código hexadecimal.
+	 *
+	 * @param color El objeto Color a convertir.
+	 * @return El código hexadecimal del color en formato "#RRGGBB".
+	 */
+
+	public static String colorToHex(Color color) {
+
+		int red = color.getRed();
+
+		int green = color.getGreen();
+
+		int blue = color.getBlue();
+
+		String hexRed = String.format("%02X", red);
+
+		String hexGreen = String.format("%02X", green);
+
+		String hexBlue = String.format("%02X", blue);
+
+		return String.format("#%s%s%s", hexRed, hexGreen, hexBlue);
+
+	}
+
+	/**
+	 * Evalúa una expresión matemática que puede contener variables y funciones.
+	 * 
+	 * @param expression La expresión a evaluar (e.g., "Math.round(width * 0.2f)").
+	 * @param width      El valor de la variable width.
+	 * @param height     El valor de la variable height.
+	 * @return El resultado de la expresión evaluada como entero.
+	 */
+
+	public static int evaluateExpression(String expression, int width, int height) {
+
+		expression = expression.replace("width", String.valueOf(width));
+
+		expression = expression.replace("height", String.valueOf(height));
+
+		if (expression.contains("(")) {
+
+			expression = expression.substring(expression.indexOf("(") + 1, expression.indexOf(")"));
+
+			expression = expression.replace(" ", "");
+
+		}
+
+		expression = expression.replace("f", "");
+
+		try {
+
+			net.objecthunter.exp4j.Expression expr = new ExpressionBuilder(expression).build();
+
+			double result = expr.evaluate();
+
+			return (int) Math.round(result);
+
+		}
+
+		catch (Exception e) {
+
+			return 0;
+
+		}
+
+	}
+
+	/**
+	 * Verifica si una coordenada es un número.
+	 *
+	 * @param coordinate La coordenada a verificar.
+	 * @return true si la coordenada contiene solo dígitos (y opcionalmente un signo
+	 *         negativo), false en caso contrario.
+	 */
+
+	private static boolean isNumber(String coordinate) {
+
+		return coordinate.matches("-?\\d+");
+
+	}
+
+	/**
+	 * Agrega un punto al polígono a partir de una línea de texto que representa una
+	 * coordenada.
+	 *
+	 * @param polygon El polígono al que se le agregará el punto.
+	 * @param linea   La línea de texto que contiene las coordenadas del punto.
+	 * @param width   El ancho del área de dibujo, usado para evaluar expresiones
+	 *                relativas.
+	 * @param height  La altura del área de dibujo, usado para evaluar expresiones
+	 *                relativas.
+	 * @param primero Indica si es el primer punto de la secuencia (afecta cómo se
+	 *                procesa la línea).
+	 */
+
+	private static void agregarPunto(Polygon polygon, String linea, int width, int height, boolean primero) {
+
+		String datoX = "";
+
+		String datoY = "";
+
+		int numeroA;
+
+		int numeroB;
+
+		linea = limpiarEspacios(linea, true);
+
+		if (primero) {
+
+			datoX = (linea.substring(linea.indexOf("(") + 1, linea.indexOf(",")));
+
+			linea = linea.substring(linea.indexOf(","));
+
+			linea = linea.substring(linea.indexOf(",") + 1);
+
+			datoY = linea.substring(0, linea.indexOf(","));
+
+		}
+
+		else {
+
+			linea = linea.substring(linea.indexOf(",") + 1, linea.length());
+
+			linea = linea.substring(linea.indexOf(",") + 1, linea.length());
+
+			datoX = linea.substring(0, linea.lastIndexOf(","));
+
+			datoY = linea.substring(linea.lastIndexOf(",") + 1, linea.lastIndexOf(")"));
+
+		}
+
+		if (!isNumber(datoX)) {
+
+			numeroA = evaluateExpression(datoX, width, height);
+
+		}
+
+		else {
+
+			numeroA = Integer.parseInt(datoX);
+
+		}
+
+		if (!isNumber(datoY)) {
+
+			numeroB = evaluateExpression(datoY, width, height);
+
+		}
+
+		else {
+
+			numeroB = Integer.parseInt(datoY);
+
+		}
+
+		polygon.addPoint(numeroA, numeroB);
+
+	}
+
+	/**
+	 * Genera un polígono a partir de un código que contiene las coordenadas de sus
+	 * vértices.
+	 *
+	 * @param code   El código que contiene las coordenadas del polígono, separadas
+	 *               por líneas.
+	 * @param width  El ancho del área de dibujo, usado para evaluar expresiones
+	 *               relativas.
+	 * @param height La altura del área de dibujo, usado para evaluar expresiones
+	 *               relativas.
+	 * @return Un objeto Polygon que representa el polígono generado a partir del
+	 *         código.
+	 */
+
+	public static Polygon getPolygonFromCode(String code, int width, int height) {
+
+		String partes[] = code.split("\n");
+
+		String dibujoLinea = "";
+
+		Polygon polygon = new Polygon();
+
+		for (int i = 0; i < partes.length; i++) {
+
+			dibujoLinea = partes[i].trim();
+
+			dibujoLinea = dibujoLinea.replace("  ", " ");
+
+			dibujoLinea = dibujoLinea.replace(" ", "");
+
+			if (!dibujoLinea.isEmpty()) {
+
+				if (i == 0) {
+
+					agregarPunto(polygon, dibujoLinea, width, height, true);
+
+					agregarPunto(polygon, dibujoLinea, width, height, false);
+
+				}
+
+				else {
+
+					agregarPunto(polygon, dibujoLinea, width, height, false);
+
+				}
+
+			}
+
+		}
+
+		return polygon;
+
+	}
+
+	public static boolean isWindowsPath(String path) {
+
+		return path.matches(WINDOWS_PATH_REGEX);
+
+	}
+
+	public static boolean isLinuxPath(String path) {
+
+		return path.matches(LINUX_PATH_REGEX);
+
+	}
+
+	public static void revalidar(Component c) {
+
+		try {
+
+			c.revalidate();
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+	}
+
+	public static void repintar(Component c) {
+
+		try {
+
+			c.repaint();
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+	}
+
+	/**
+	 * Convierte una cadena en una lista de subcadenas, basada en un separador
+	 * especificado.
+	 *
+	 * @param input     La cadena que se desea dividir.
+	 * @param separator El delimitador utilizado para dividir la cadena.
+	 * @return Una lista de subcadenas obtenidas al dividir la cadena de entrada
+	 *         utilizando el separador especificado.
+	 * @throws NullPointerException si la cadena de entrada o el separador son
+	 *                              nulos.
+	 */
+
+	public static List<String> convertStringToList(String input, String separator) {
+
+		String[] parts = input.split(separator);
+
+		return Arrays.asList(parts);
+
+	}
+
+	/**
+	 * Convierte una cadena separada por comas en una lista de subcadenas.
+	 *
+	 * @param input La cadena que se desea dividir. Se espera que la cadena esté
+	 *              separada por comas.
+	 * @return Una lista de subcadenas obtenidas al dividir la cadena de entrada
+	 *         utilizando una coma como delimitador.
+	 * @throws NullPointerException si la cadena de entrada es nula.
+	 */
+
+	public static List<String> convertStringToList(String input) {
+
+		String[] parts = input.split(",");
+
+		return Arrays.asList(parts);
+
+	}
+
+	/**
+	 * Busca el índice del primer elemento en la lista que es igual al valor
+	 * buscado.
+	 *
+	 * @param lista        Una lista de enteros donde se realizará la búsqueda.
+	 * @param valorBuscado El valor que se desea encontrar en la lista.
+	 * @return El índice del primer elemento que coincide con el valor buscado, o -1
+	 *         si el valor no se encuentra en la lista.
+	 */
+
+	public static int encontrarIndice(List<Integer> lista, int valorBuscado) {
+
+		for (int i = 0; i < lista.size(); i++) {
+
+			if (lista.get(i) == valorBuscado) {
+
+				return i;
+
+			}
+
+		}
+
+		return -1;
+
+	}
+
+	/**
+	 * Divide dos números y retorna el siguiente entero más cercano si el resultado
+	 * tiene decimales.
+	 *
+	 * @param numerator   el numerador.
+	 * @param denominator el denominador.
+	 * @return el resultado de la división como un entero redondeado hacia arriba si
+	 *         tiene decimales.
+	 * @throws IllegalArgumentException si el denominador es cero.
+	 */
+
+	public static int divideAndCeil(int numerator, int denominator) {
+
+		if (denominator == 0) {
+
+			throw new IllegalArgumentException("El denominador no puede ser cero.");
+
+		}
+
+		float result = (float) numerator / denominator;
+
+		return (int) Math.ceil(result);
+
+	}
+
+	/**
+	 * Elimina el primer
+	 * <td>de cada
+	 * <tr>
+	 * en el contenido HTML proporcionado.
+	 *
+	 * @param html el contenido HTML como una cadena de texto.
+	 * @return el contenido HTML modificado.
+	 */
+	public static String eliminarPrimerTdDeCadaTr(String html) {
+
+		String regex = "(<tr[^>]*>)(<td[^>]*>.*?</td>)";
+
+		String htmlModificado = html.replaceAll(regex, "$1");
+
+		return htmlModificado;
+
+	}
+
+	/**
+	 * Hace que el hilo actual se detenga durante el tiempo especificado en
+	 * 
+	 * segundos.
+	 * 
+	 * @param segundos el tiempo en segundos durante el cual el hilo se
+	 * 
+	 *                 detendrá.
+	 * 
+	 * @throws IllegalArgumentException si el valor de segundos es negativo.
+	 */
+
+	public static void esperar(int segundos) {
+
+		try {
+
+			Thread.sleep(segundos * 1000);
+
+		}
+
+		catch (InterruptedException e1) {
+
+		}
+
+	}
+
+	/**
+	 * Hace que el hilo actual se detenga durante el tiempo especificado en
+	 * 
+	 * milisegundos.
+	 * 
+	 * @param milisegundos el tiempo en milisegundos durante el cual el hilo se
+	 * 
+	 *                     detendrá.
+	 * 
+	 * @throws IllegalArgumentException si el valor de milisegundos es negativo.
+	 */
+
+	public static void esperarMiliSegundos(int milisegundos) {
+
+		try {
+
+			Thread.sleep(milisegundos);
+
+		}
+
+		catch (InterruptedException e1) {
+
+		}
+
+	}
+
+	/**
+	 * Agrega todos los elementos de la lista {@code data} a la lista {@code list}.
+	 *
+	 * @param list La lista a la que se agregarán los elementos.
+	 * @param data La lista que contiene los elementos que se agregarán a
+	 *             {@code list}.
+	 * @return La lista {@code list} después de agregar los elementos de
+	 *         {@code data}.
+	 */
+
+	public static List<String> agregarLista(List<String> list, List<String> data) {
+
+		for (String dato : data) {
+
+			list.add(dato);
+
+		}
+
+		return list;
+
+	}
+
+	/**
+	 * Obtiene el valor de una etiqueta específica en un documento HTML.
+	 *
+	 * @param etiqueta La etiqueta HTML cuyo contenido se desea obtener.
+	 * @param html     El contenido HTML en el que se buscará la etiqueta.
+	 * @return El contenido de la primera aparición de la etiqueta, o una cadena
+	 *         vacía si no se encuentra.
+	 */
+
+	public static String obtenerValorEtiqueta(String etiqueta, String html) {
+
+		String patternString = "<" + etiqueta + ".*?>(.*?)</" + etiqueta + ">";
+
+		Pattern pattern = Pattern.compile(patternString, Pattern.DOTALL);
+
+		Matcher matcher = pattern.matcher(html);
+
+		if (matcher.find()) {
+
+			return matcher.group(1).trim();
+
+		}
+
+		return "";
+
+	}
+
+	/**
+	 * Elimina todas las ocurrencias de una etiqueta HTML específica de una cadena
+	 * HTML.
+	 * 
+	 * @param etiqueta La etiqueta HTML que se desea eliminar (por ejemplo, "div",
+	 *                 "span").
+	 * @param html     El código HTML del que se eliminarán las etiquetas.
+	 * @return El código HTML resultante después de eliminar las etiquetas
+	 *         especificadas.
+	 */
+
+	public static String eliminarEtiqueta(String etiqueta, String html) {
+
+		String regexPattern = "<" + etiqueta + "\\b[^>]*>(.*?)</" + etiqueta + ">";
+
+		Pattern pattern = Pattern.compile(regexPattern, Pattern.DOTALL);
+
+		Matcher matcher = pattern.matcher(html);
+
+		String resultado = matcher.replaceAll("");
+
+		return resultado;
+
+	}
+
+	/**
+	 * Elimina todas las etiquetas HTML especificadas que coincidan con el atributo
+	 * y valor dados de una cadena HTML.
+	 * 
+	 * @param etiqueta      El nombre de la etiqueta HTML que se desea eliminar.
+	 * @param atributoName  El nombre del atributo en la etiqueta HTML que se debe
+	 *                      coincidir.
+	 * @param valorAtributo El valor del atributo que debe coincidir para eliminar
+	 *                      la etiqueta.
+	 * @param htmlTabla     El código HTML en el que se realizará la eliminación de
+	 *                      la etiqueta.
+	 * @return El código HTML resultante después de eliminar las etiquetas
+	 *         especificadas y formatear el HTML.
+	 */
+
+	public static String eliminarEtiquetaHtml(String etiqueta, String atributoName, String valorAtributo,
+			String htmlTabla, boolean indent) {
+
+		String filaInicioTagPattern = "<" + etiqueta + "\\s[^>]*?" + atributoName + "\\s*=\\s*\"" + valorAtributo
+				+ "\"[^>]*>";
+		String filaFinTag = "</" + etiqueta + ">";
+
+		String regexPattern = filaInicioTagPattern + ".*?" + filaFinTag;
+
+		Pattern pattern = Pattern.compile(regexPattern, Pattern.DOTALL);
+
+		Matcher matcher = pattern.matcher(htmlTabla);
+
+		String resultado = matcher.replaceAll("");
+
+		if (indent) {
+
+			return formatearHtml(resultado).replace("\n\n", "\n");
+
+		}
+
+		else {
+
+			return resultado;
+
+		}
+
+	}
+
+	/**
+	 * Formatea el código HTML para asegurar una indentación adecuada y eliminar
+	 * líneas en blanco innecesarias.
+	 * 
+	 * @param html El código HTML que se desea formatear.
+	 * @return El código HTML formateado con la indentación adecuada y líneas en
+	 *         blanco mantenidas.
+	 */
+
+	private static String formatearHtml(String html) {
+
+		StringBuilder resultado = new StringBuilder();
+
+		StringBuilder buffer = new StringBuilder();
+
+		int nivelIndentacion = 0;
+
+		String indentacion = "    ";
+
+		boolean primeraEtiquetaHija = true;
+
+		for (char c : html.toCharArray()) {
+
+			buffer.append(c);
+
+			if (c == '<') {
+
+				if (buffer.length() > 1 && !primeraEtiquetaHija) {
+
+					resultado.append("\n");
+
+				}
+
+				if (primeraEtiquetaHija) {
+
+					primeraEtiquetaHija = false;
+
+				}
+
+			}
+
+			if (c == '>') {
+
+				String tag = buffer.toString().trim();
+
+				buffer.setLength(0);
+
+				if (tag.startsWith("</")) {
+
+					nivelIndentacion--;
+
+				}
+
+				if (nivelIndentacion > 0) {
+
+					for (int i = 0; i < nivelIndentacion; i++) {
+
+						resultado.append(indentacion);
+
+					}
+
+				}
+
+				if (tag.matches("<[^>]+/>") || tag.startsWith("</")) {
+
+					resultado.append(tag);
+
+					resultado.append("\n");
+
+				}
+
+				else if (tag.startsWith("<") && !tag.endsWith("/>")) {
+
+					resultado.append(tag);
+
+					nivelIndentacion++;
+
+				}
+
+				else {
+
+					resultado.append(tag);
+
+					resultado.append("\n");
+
+				}
+
+				if (tag.startsWith("</")) {
+
+					nivelIndentacion--;
+
+				}
+
+			}
+
+		}
+
+		if (buffer.length() > 0) {
+
+			resultado.append(buffer.toString().trim());
+
+		}
+
+		String resultadoFinal = resultado.toString().trim();
+
+		resultadoFinal = resultadoFinal.replaceAll("(<[^>]+>)\\s*(</[^>]+>)", "$1$2");
+
+		resultadoFinal = resultadoFinal.replaceAll("(<[^>]+>)(\\s*<[^>]+>)", "$1\n$2");
+
+		return resultadoFinal;
+
+	}
+
+	/**
+	 * Divide la lista original en sublistas de tamaño `split` y elimina las
+	 * sublistas cuyos índices están en `indices`.
+	 *
+	 * @param lista   La lista original de cadenas.
+	 * @param indices Una lista de enteros que especifica los índices de las
+	 *                sublistas a eliminar.
+	 * @param split   El tamaño de cada sublista.
+	 * @return Una nueva lista con las sublistas no eliminadas.
+	 */
+
+	public static List<String> borrarListaConSplit(List<String> lista, List<Integer> indices, int split) {
+
+		ArrayList<String> resultado = new ArrayList<>();
+
+		int listaSize = lista.size();
+
+		int numSublistas = (int) Math.ceil((double) listaSize / split);
+
+		int startIndex = 0;
+
+		int endIndex = 0;
+
+		for (int i = 0; i < numSublistas; i++) {
+
+			if (!indices.contains(i)) {
+
+				startIndex = i * split;
+
+				endIndex = Math.min(startIndex + split, listaSize);
+
+				for (int j = startIndex; j < endIndex; j++) {
+
+					resultado.add(lista.get(j));
+
+				}
+
+			}
+
+		}
+
+		return resultado;
+
+	}
+
+	/**
+	 * Encuentra todas las coincidencias de un texto en una lista de cadenas,
+	 * dividiendo la lista en sublistas de un tamaño específico. Si alguna cadena en
+	 * una sublista contiene el texto, todos los elementos de esa sublista se añaden
+	 * al resultado.
+	 *
+	 * @param lista          La lista de cadenas a examinar.
+	 * @param texto          El texto a buscar dentro de las cadenas.
+	 * @param tamañoSublista El tamaño de las sublistas en las que se dividirá la
+	 *                       lista original.
+	 * @return Una lista de cadenas que contiene todas las sublistas donde al menos
+	 *         un elemento contiene el texto especificado.
+	 */
+
+	public static ArrayList<String> encontrarCoincidencias(ArrayList<String> lista, String texto, int tamañoSublista) {
+
+		ArrayList<String> resultado = new ArrayList<>();
+
+		int totalElementos = lista.size();
+
+		boolean coincide;
+
+		ArrayList<String> sublista;
+
+		for (int i = 0; i < totalElementos; i += tamañoSublista) {
+
+			coincide = false;
+
+			sublista = new ArrayList<>();
+
+			for (int j = i; j < i + tamañoSublista && j < totalElementos; j++) {
+
+				sublista.add(lista.get(j));
+
+				if (lista.get(j).contains(texto)) {
+
+					coincide = true;
+
+				}
+
+			}
+
+			if (coincide) {
+
+				resultado.addAll(sublista);
+
+			}
+
+		}
+
+		return resultado;
+
+	}
 
 	/**
 	 * Genera una lista de números con ceros a la izquierda hasta el número
@@ -109,7 +1278,7 @@ public class JMthos {
 	 * @return una lista de cadenas de números con ceros a la izquierda
 	 */
 
-	public static ArrayList<String> pintarCeros(int number) {
+	public static List<String> pintarCeros(int number) {
 
 		ArrayList<String> lista = new ArrayList<>();
 
@@ -126,6 +1295,41 @@ public class JMthos {
 	}
 
 	/**
+	 * Divide la lista original en sublistas de tamaño `j` y retorna la sublista
+	 * correspondiente al índice `i`.
+	 *
+	 * @param lista2 La lista original de cadenas.
+	 * @param i      El índice de la sublista que se desea obtener.
+	 * @param j      El tamaño de cada sublista.
+	 * @return La sublista correspondiente al índice `i` de tamaño `j`.
+	 * @throws IllegalArgumentException si el índice inicial está fuera de rango.
+	 */
+
+	public static ArrayList<String> obtenerListaConSplit(ArrayList<String> lista2, int i, int j) {
+
+		ArrayList<String> resultado = new ArrayList<>();
+
+		int startIndex = i * j;
+
+		int endIndex = Math.min(startIndex + j, lista2.size());
+
+		if (startIndex < 0 || startIndex >= lista2.size()) {
+
+			throw new IllegalArgumentException("Índice inicial fuera de rango");
+
+		}
+
+		for (int index = startIndex; index < endIndex; index++) {
+
+			resultado.add(lista2.get(index));
+
+		}
+
+		return resultado;
+
+	}
+
+	/**
 	 * Ordena una lista de nombres de archivo de forma ascendente basada en el
 	 * número en el nombre del archivo. Los nombres con números precedidos por ceros
 	 * y con menos ceros a la izquierda aparecen primero, seguidos por aquellos sin
@@ -133,6 +1337,7 @@ public class JMthos {
 	 *
 	 * @param fileNames la lista de nombres de archivo a ordenar
 	 */
+
 	public static void sortFileNames(List<String> fileNames) {
 
 		Collections.sort(fileNames, new Comparator<String>() {
@@ -321,7 +1526,7 @@ public class JMthos {
 	 *                                  total es negativa
 	 */
 
-	public static double calculatePercentage(double total, double percentage) {
+	public static double valorPorcentaje(double total, double percentage) {
 
 		if (total < 0 || percentage < 0) {
 
@@ -352,7 +1557,7 @@ public class JMthos {
 
 		}
 
-		double adjustment = calculatePercentage(total, percentage);
+		double adjustment = valorPorcentaje(total, percentage);
 
 		return increase ? total + adjustment : total - adjustment;
 
@@ -394,7 +1599,7 @@ public class JMthos {
 	 * @param lista la lista de componentes que se añadirán al diálogo
 	 */
 
-	public static void showNewDialog(JComponent tthis, String title, List<JComponent> lista) {
+	public static void showNewDialog(JComponent tthis, String title, boolean resize, List<JComponent> lista) {
 
 		JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(tthis);
 
@@ -412,6 +1617,8 @@ public class JMthos {
 
 		dialog.setLocationRelativeTo(parentFrame);
 
+		dialog.setResizable(resize);
+
 		dialog.setVisible(true);
 
 	}
@@ -426,13 +1633,14 @@ public class JMthos {
 	 * @param lista  la lista de componentes que se añadirán al diálogo
 	 */
 
-	public static void showNewDialog(JComponent tthis, int width, int height, String title, List<JComponent> lista) {
+	public static void showNewDialog(JComponent tthis, int width, int height, boolean resize, String title,
+			List<JComponent> lista) {
 
 		JFrame parentFrame = (JFrame) SwingUtilities.getWindowAncestor(tthis);
 
 		JDialog dialog = new JDialog(parentFrame, title, true);
 
-		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+		dialog.setDefaultCloseOperation(WindowConstants.DISPOSE_ON_CLOSE);
 
 		for (JComponent valor : lista) {
 
@@ -443,6 +1651,8 @@ public class JMthos {
 		dialog.setSize(width, height);
 
 		dialog.setLocationRelativeTo(parentFrame);
+
+		dialog.setResizable(resize);
 
 		dialog.setVisible(true);
 
@@ -1821,6 +3031,39 @@ public class JMthos {
 	}
 
 	/**
+	 * Agrega una lista de cadenas a un JComboBox.
+	 *
+	 * @param comboBox el JComboBox al que se agregarán los elementos
+	 * @param lista    la lista de cadenas que se agregarán al JComboBox
+	 */
+
+	public static void agregarAComboBox(JComboBox<String> comboBox, List<String> lista) {
+
+		for (String valor : lista) {
+
+			comboBox.addItem(valor);
+
+		}
+
+	}
+
+	/**
+	 * Centra el texto de los elementos en un JComboBox.
+	 *
+	 * @param comboBox el JComboBox cuyos elementos se centrarán
+	 */
+
+	public static void centrarComboBox(JComboBox<String> comboBox) {
+
+		DefaultListCellRenderer listRenderer = new DefaultListCellRenderer();
+
+		listRenderer.setHorizontalAlignment(DefaultListCellRenderer.CENTER);
+
+		comboBox.setRenderer(listRenderer);
+
+	}
+
+	/**
 	 * Centra un JFrame en la pantalla.
 	 *
 	 * @param frame El JFrame a centrar.
@@ -2005,15 +3248,100 @@ public class JMthos {
 	}
 
 	/**
-	 * Ejecuta una consulta SQLite y devuelve los resultados.
+	 * Ejecuta una actualización en una tabla de una base de datos SQLite. Este
+	 * método realiza una operación de `UPDATE` en función de los parámetros
+	 * proporcionados y una cláusula `WHERE` para especificar las condiciones.
 	 *
-	 * @param dbName  El nombre de la base de datos SQLite.
-	 * @param query   La consulta SQL.
-	 * @param columns Las columnas de las cuales se desea obtener los resultados.
-	 * @return Una lista de resultados.
+	 * @param dbName      El nombre del archivo de base de datos SQLite.
+	 * @param table       El nombre de la tabla en la que se realizará la
+	 *                    actualización.
+	 * @param columns     Una lista de nombres de columnas que serán afectadas en la
+	 *                    operación de actualización.
+	 * @param values      Una lista de valores que serán asignados a las columnas
+	 *                    correspondientes.
+	 * @param whereClause La cláusula `WHERE` para especificar las filas que se
+	 *                    actualizarán. Puede ser una cadena vacía o nula si no se
+	 *                    necesitan condiciones.
+	 * @return El número de filas afectadas por la consulta.
+	 * @throws ClassNotFoundException Si el controlador de SQLite no se encuentra en
+	 *                                el classpath.
+	 * @throws SQLException           Si ocurre algún error relacionado con la base
+	 *                                de datos durante la ejecución de la consulta.
 	 */
 
-	public static ArrayList<String> selectSQlite(String dbName, String query, List<String> columns) {
+	public static int updateSqlite(String dbName, String table, List<String> columns, List<String> values,
+			String whereClause) {
+
+		if (columns.size() != values.size()) {
+
+			throw new IllegalArgumentException("El número de columnas no coincide con el número de valores.");
+
+		}
+
+		String url = "jdbc:sqlite:" + dbName;
+
+		int rowsAffected = 0;
+
+		StringBuilder query = new StringBuilder("UPDATE " + table + " SET ");
+
+		for (int i = 0; i < columns.size(); i++) {
+
+			query.append(columns.get(i)).append(" = ?");
+
+			if (i < columns.size() - 1) {
+
+				query.append(", ");
+
+			}
+
+		}
+
+		if (whereClause != null && !whereClause.isEmpty()) {
+
+			query.append(" WHERE ").append(whereClause);
+
+		}
+
+		try {
+
+			Class.forName("org.sqlite.JDBC");
+
+			Connection connection = DriverManager.getConnection(url);
+
+			PreparedStatement preparedStatement = connection.prepareStatement(query.toString());
+
+			for (int i = 0; i < values.size(); i++) {
+
+				preparedStatement.setObject(i + 1, values.get(i));
+
+			}
+
+			rowsAffected = preparedStatement.executeUpdate();
+
+			preparedStatement.close();
+
+			connection.close();
+
+		}
+
+		catch (Exception e) {
+
+		}
+
+		return rowsAffected;
+
+	}
+
+	/**
+	 * Ejecuta una consulta SQL sobre una base de datos SQLite y devuelve los
+	 * resultados.
+	 * 
+	 * @param dbName Nombre o ruta de la base de datos SQLite.
+	 * @param query  Consulta SQL a ejecutar.
+	 * @return Una lista de valores obtenidos de todas las columnas.
+	 */
+
+	public static ArrayList<String> selectSqlite(String dbName, String query) {
 
 		String url = "jdbc:sqlite:" + dbName;
 
@@ -2029,11 +3357,15 @@ public class JMthos {
 
 			ResultSet resultSet = statement.executeQuery(query);
 
+			ResultSetMetaData metaData = resultSet.getMetaData();
+
+			int columnCount = metaData.getColumnCount();
+
 			while (resultSet.next()) {
 
-				for (int i = 0; i < columns.size(); i++) {
+				for (int i = 1; i <= columnCount; i++) {
 
-					resultados.add(resultSet.getString(columns.get(i)));
+					resultados.add(resultSet.getString(i));
 
 				}
 
@@ -2056,6 +3388,58 @@ public class JMthos {
 	}
 
 	/**
+	 * Elimina un registro de una tabla de una base de datos SQLite según la
+	 * condición especificada.
+	 *
+	 * @param db     La ruta del archivo de la base de datos SQLite.
+	 * @param table  El nombre de la tabla de la cual se eliminará el registro.
+	 * @param column La columna en la que se buscará el valor para realizar la
+	 *               eliminación.
+	 * @param value  El valor que se buscará en la columna especificada para
+	 *               eliminar el registro. Si la columna es de tipo TEXT, asegúrate
+	 *               de que el valor se pase como una cadena (String).
+	 */
+
+	public static void deleteSQLite(String db, String table, String column, String value) {
+
+		try {
+
+			Class.forName("org.sqlite.JDBC");
+
+			try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db)) {
+
+				String sql = "DELETE FROM " + table + " WHERE " + column + " = ?";
+
+				try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+
+					pstmt.setString(1, value);
+
+					pstmt.executeUpdate();
+
+				}
+
+				catch (SQLException e) {
+
+					e.printStackTrace();
+				}
+
+			}
+
+			catch (SQLException e) {
+
+				e.printStackTrace();
+			}
+
+		}
+
+		catch (ClassNotFoundException e) {
+
+			e.printStackTrace();
+		}
+
+	}
+
+	/**
 	 * Inserta datos en una tabla SQLite.
 	 * 
 	 * @param db      Nombre de la base de datos SQLite.
@@ -2067,23 +3451,37 @@ public class JMthos {
 
 	public static void insertSQLite(String db, String table, List<String> columns, List<String> values) {
 
-		try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db);
+		try {
 
-				PreparedStatement pstmt = conn
-						.prepareStatement("INSERT INTO " + table + " (" + String.join(",", columns) + ") VALUES ("
-								+ values.stream().map(v -> "?").collect(Collectors.joining(",")) + ")")) {
+			Class.forName("org.sqlite.JDBC");
 
-			for (int i = 0; i < values.size(); i++) {
+			try (Connection conn = DriverManager.getConnection("jdbc:sqlite:" + db);
 
-				pstmt.setString(i + 1, values.get(i));
+					PreparedStatement pstmt = conn
+							.prepareStatement("INSERT INTO " + table + " (" + String.join(",", columns) + ") VALUES ("
+									+ values.stream().map(v -> "?").collect(Collectors.joining(",")) + ")")) {
+
+				for (int i = 0; i < values.size(); i++) {
+
+					pstmt.setString(i + 1, values.get(i));
+
+				}
+
+				pstmt.executeUpdate();
 
 			}
 
-			pstmt.executeUpdate();
+			catch (SQLException e) {
+
+				e.printStackTrace();
+
+			}
 
 		}
 
-		catch (SQLException e) {
+		catch (ClassNotFoundException e) {
+
+			e.printStackTrace();
 
 		}
 
@@ -3372,7 +4770,7 @@ public class JMthos {
 
 		}
 
-		LinkedList<String> lista = new LinkedList<>();
+		List<String> lista = new ArrayList<>();
 
 		File f = new File(ruta);
 
@@ -3536,7 +4934,7 @@ public class JMthos {
 	 * @param fichero      Nombre del archivo o carpeta.
 	 */
 
-	static void saberSiEsRutaAbsoluta(String ruta, boolean absolutePath, LinkedList<String> list, String fichero) {
+	static void saberSiEsRutaAbsoluta(String ruta, boolean absolutePath, List<String> list, String fichero) {
 
 		if (absolutePath) {
 
@@ -3928,21 +5326,31 @@ public class JMthos {
 
 		try {
 
-			String cabecera = "";
+			List<String> command = new ArrayList<>();
 
 			if (OS.contains("indow")) {
 
-				cabecera = "cmd /c ";
+				command.add("cmd");
+
+				command.add("/c");
 
 				if (cmd) {
 
-					cabecera = "cmd /c start cmd.exe /K \"";
+					command.add("start");
+
+					command.add("cmd.exe");
+
+					command.add("/K");
 
 				}
 
 			}
 
-			Runtime.getRuntime().exec(cabecera + string);
+			command.add(string);
+
+			ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+			processBuilder.start();
 
 		}
 
@@ -3963,22 +5371,47 @@ public class JMthos {
 
 		try {
 
-			String cabecera = "";
+			String dir = string.substring(0, string.lastIndexOf(saberSeparador()));
+
+			String jarFile = string.substring(string.lastIndexOf(saberSeparador()) + 1);
+
+			List<String> command = new ArrayList<>();
 
 			if (OS.contains("indow")) {
 
-				cabecera = "cmd /c ";
+				command.add("cmd");
+
+				command.add("/c");
 
 				if (cmd) {
 
-					cabecera = "cmd /c start cmd.exe /K \"";
+					command.add("start");
+
+					command.add("cmd.exe");
+
+					command.add("/K");
 
 				}
 
 			}
 
-			Runtime.getRuntime().exec(cabecera + "cd " + string.substring(0, string.lastIndexOf(saberSeparador()))
-					+ " && java -jar \"" + string.substring(string.lastIndexOf(saberSeparador()) + 1) + "\"");
+			command.add("cd");
+
+			command.add(dir);
+
+			command.add("&&");
+
+			command.add("java");
+
+			command.add("-jar");
+
+			command.add("\"" + jarFile + "\"");
+
+			ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+			processBuilder.directory(new File(dir));
+
+			processBuilder.start();
 
 		}
 
@@ -4058,19 +5491,47 @@ public class JMthos {
 
 				if (OS.contains("indows")) {
 
-					Runtime.getRuntime().exec("cmd /c C:\\Windows\\explorer.exe " + "\"" + ruta + "\"");
+					try {
+
+						String[] command = { "cmd", "/c", "C:\\Windows\\explorer.exe", "\"" + ruta + "\"" };
+
+						ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+						processBuilder.start();
+
+					}
+
+					catch (Exception e) {
+
+					}
 
 				}
 
 				else if (OS.contains("inux")) {
 
-					Runtime.getRuntime().exec("xdg-open " + ruta);
+					ProcessBuilder processBuilder = new ProcessBuilder("xdg-open", ruta);
+
+					processBuilder.redirectErrorStream(true);
+
+					processBuilder.start();
 
 				}
 
 				else {
 
-					Runtime.getRuntime().exec("open " + ruta);
+					try {
+
+						String[] command = { "open", "\"" + ruta + "\"" };
+
+						ProcessBuilder processBuilder = new ProcessBuilder(command);
+
+						processBuilder.start();
+
+					}
+
+					catch (Exception e) {
+
+					}
 
 				}
 
@@ -4135,16 +5596,19 @@ public class JMthos {
 
 	public static String saberExtension(String nombreArchivo) {
 
-		String extension = "";
+		if (nombreArchivo.length() >= 3 && nombreArchivo.lastIndexOf(".") > -1) {
 
-		if (nombreArchivo.length() >= 3) {
-
-			extension = nombreArchivo.substring(
-					nombreArchivo.length() - nombreArchivo.substring(nombreArchivo.lastIndexOf(".") + 1).length());
+			return nombreArchivo.substring(
+					nombreArchivo.length() - nombreArchivo.substring(nombreArchivo.lastIndexOf(".") + 1).length())
+					.toLowerCase();
 
 		}
 
-		return extension.toLowerCase();
+		else {
+
+			return "";
+
+		}
 
 	}
 
@@ -4748,28 +6212,67 @@ public class JMthos {
 	 *
 	 * @param url URL desde donde se leerá el JSON.
 	 * @return Objeto JSONObject que representa el JSON leído desde la URL.
-	 * @throws IOException Si ocurre un error al leer desde la URL.
+	 * @throws IOException   Si ocurre un error al leer desde la URL.
+	 * @throws JSONException
 	 */
 
-	public static JSONObject readJsonFromUrl(String url) throws IOException {
+	public static JSONObject readJsonFromUrl(String urlString) throws IOException, JSONException {
 
 		JSONObject resultado = null;
 
+		HttpURLConnection connection = null;
+
 		try {
 
-			InputStream is = new URL(url).openStream();
+			URI uri = new URI(urlString);
 
-			BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+			URL url = uri.toURL();
 
-			String jsonText = readAll(rd);
+			connection = (HttpURLConnection) url.openConnection();
 
-			is.close();
+			connection.setRequestMethod("GET");
 
-			resultado = new JSONObject(jsonText);
+			connection.setConnectTimeout(5000);
+
+			connection.setReadTimeout(5000);
+
+			int responseCode = connection.getResponseCode();
+
+			if (responseCode == HttpURLConnection.HTTP_OK) {
+
+				try (InputStream is = connection.getInputStream();
+
+						BufferedReader rd = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+
+					String jsonText = readAll(rd);
+
+					resultado = new JSONObject(jsonText);
+
+				}
+
+			}
 
 		}
 
-		catch (Exception e) {
+		catch (URISyntaxException e) {
+
+			System.err.println("URL malformed: " + e.getMessage());
+
+		}
+
+		catch (IOException e) {
+
+			e.printStackTrace();
+
+		}
+
+		finally {
+
+			if (connection != null) {
+
+				connection.disconnect();
+
+			}
 
 		}
 
@@ -4887,6 +6390,63 @@ public class JMthos {
 	}
 
 	/**
+	 * Cuenta y lista los archivos en una carpeta que coinciden con una extensión
+	 * específica.
+	 *
+	 * @param carpeta La ruta de la carpeta en la que se buscarán los archivos.
+	 * @param filtro  La extensión de archivo que se utilizará como filtro. Si se
+	 *                proporciona un punto ("."), se contarán todos los archivos sin
+	 *                importar su extensión.
+	 * @return El número de archivos en la carpeta que coinciden con la extensión
+	 *         especificada.
+	 * 
+	 * @throws IllegalArgumentException si la ruta proporcionada no corresponde a un
+	 *                                  directorio.
+	 */
+
+	public static int listarFicherosPorCarpeta(String carpeta, String filtro) {
+
+		File exCarpeta = new File(carpeta);
+
+		int ocurrencias = 0;
+
+		if (exCarpeta.isDirectory()) {
+
+			String extension;
+
+			String nombreArchivo;
+
+			File folder;
+
+			for (final File ficheroEntrada : exCarpeta.listFiles()) {
+
+				nombreArchivo = ficheroEntrada.getName();
+
+				extension = saberExtension(nombreArchivo);
+
+				folder = new File(exCarpeta + saberSeparador() + nombreArchivo);
+
+				if (!folder.isDirectory() && (extension.equals(filtro) || filtro.equals("."))) {
+
+					ocurrencias++;
+
+				}
+
+			}
+
+		}
+
+		else {
+
+			throw new IllegalArgumentException("La ruta proporcionada no corresponde a un directorio.");
+
+		}
+
+		return ocurrencias;
+
+	}
+
+	/**
 	 * Elimina todos los archivos en una carpeta especificada.
 	 *
 	 * @param ruta Ruta de la carpeta que se desea vaciar.
@@ -4924,7 +6484,9 @@ public class JMthos {
 
 		try {
 
-			HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
+			URI uri = new URI(url);
+
+			HttpURLConnection connection = (HttpURLConnection) uri.toURL().openConnection();
 
 			connection.setConnectTimeout(timeout);
 
@@ -4948,7 +6510,15 @@ public class JMthos {
 
 		}
 
-		catch (IOException exception) {
+		catch (URISyntaxException e) {
+
+			System.err.println("URL malformed: " + e.getMessage());
+
+			return false;
+
+		}
+
+		catch (IOException e) {
 
 			return false;
 
