@@ -11,6 +11,8 @@ import java.io.BufferedInputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 
@@ -520,13 +522,17 @@ public class GifDecoder {
 
 		status = STATUS_OK;
 
+		InputStream in = null;
+
 		try {
 
 			name = name.trim().toLowerCase();
 
-			if ((name.indexOf("file:") >= 0) || (name.indexOf(":/") > 0)) {
+			if (name.startsWith("file:") || name.contains(":/")) {
 
-				URL url = new URL(name);
+				URI uri = new URI(name);
+
+				URL url = uri.toURL();
 
 				in = new BufferedInputStream(url.openStream());
 
@@ -542,9 +548,38 @@ public class GifDecoder {
 
 		}
 
+		catch (URISyntaxException e) {
+
+			status = STATUS_OPEN_ERROR;
+
+			System.err.println("URL mal formada: " + e.getMessage());
+
+		}
+
 		catch (IOException e) {
 
 			status = STATUS_OPEN_ERROR;
+
+			System.err.println("Error de entrada/salida: " + e.getMessage());
+
+		}
+
+		finally {
+
+			if (in != null) {
+
+				try {
+
+					in.close();
+
+				}
+
+				catch (IOException e) {
+
+					System.err.println("Error al cerrar el InputStream: " + e.getMessage());
+				}
+
+			}
 
 		}
 
@@ -556,6 +591,7 @@ public class GifDecoder {
 	 * Decodes LZW image data into pixel array. Adapted from John Cristy's
 	 * ImageMagick.
 	 */
+
 	protected void decodeImageData() {
 
 		int NullCode = -1;

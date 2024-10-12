@@ -877,6 +877,7 @@ public class JMthos {
 	 * @param html el contenido HTML como una cadena de texto.
 	 * @return el contenido HTML modificado.
 	 */
+
 	public static String eliminarPrimerTdDeCadaTr(String html) {
 
 		String regex = "(<tr[^>]*>)(<td[^>]*>.*?</td>)";
